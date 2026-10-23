@@ -558,9 +558,17 @@ select {
   font-size: 13px;
 }
 
+/*
+ * The controls on the plan card share one height, so the row reads as a
+ * single strip. The resume button previously inherited the smaller base
+ * padding and sat visibly shorter than the start button.
+ */
 .button--large {
-  padding: 12px 28px;
+  min-height: 44px;
+  padding: 0 26px;
   font-size: 15px;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 /* The resume button carries the number of words left, so the learner knows
@@ -569,6 +577,8 @@ select {
   border-color: var(--blue);
   color: var(--blue);
   gap: 8px;
+  /* The badge adds visual width; match the start button's footprint. */
+  padding: 0 20px;
 }
 
 .button--continue:hover:not(:disabled) {
@@ -824,24 +834,35 @@ select {
   margin: 0 0 22px;
 }
 
+/*
+ * The action row prefers one line, and wraps only when the card is too
+ * narrow to fit it. A hard `nowrap` ran the controls past the card edge in
+ * a small window, while `wrap` alone broke the row in a medium one; letting
+ * it shrink first and wrap last gives the same layout in both.
+ */
 .plan__actions {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
   flex-wrap: wrap;
   margin-top: auto;
+  min-width: 0;
 }
 
 .plan__modes {
   display: flex;
   gap: 2px;
   padding: 3px;
+  height: 44px;
+  align-items: center;
   background: var(--surface-alt);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius);
+  flex-shrink: 0;
 }
 
 .mode-pill {
-  padding: 6px 14px;
+  padding: 0 14px;
+  height: 36px;
   border: none;
   border-radius: 6px;
   background: transparent;
@@ -863,10 +884,11 @@ select {
 
 .plan__scope {
   width: auto;
-  min-width: 112px;
-  max-width: 148px;
+  min-width: 106px;
+  max-width: 140px;
+  height: 44px;
   flex: 0 0 auto;
-  padding: 7px 10px;
+  padding: 0 10px;
   font-size: 13px;
 }
 
@@ -919,6 +941,43 @@ select {
   font-size: 12px;
   color: var(--text-tertiary);
   font-variant-numeric: tabular-nums;
+}
+
+/*
+ * In a narrow card the action row tightens rather than wrapping: padding
+ * shrinks and the least important control (the scope select) gives up the
+ * most width, so the buttons keep their height and stay on one line.
+ */
+@container (max-width: 520px) {
+  .plan__actions {
+    gap: 6px;
+  }
+
+  /* The controls keep their height; the switches wrap as a group. */
+  .plan__modes {
+    height: 40px;
+  }
+
+  .button--large {
+    padding: 0 16px;
+    font-size: 14px;
+  }
+
+  .button--continue {
+    padding: 0 12px;
+  }
+
+  .mode-pill {
+    padding: 0 9px;
+    font-size: 12px;
+  }
+
+  .plan__scope {
+    min-width: 88px;
+    max-width: 96px;
+    padding: 0 6px;
+    font-size: 12px;
+  }
 }
 
 /* Once the side panel has wrapped below the quote, lay it out as a strip. */
