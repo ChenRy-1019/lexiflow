@@ -1,7 +1,7 @@
 {
   "name": "lexiflow",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "LexiFlow — 本地优先的英语词汇学习桌面应用",
   "scripts": {
@@ -17,7 +17,10 @@
     "audit:css": "node scripts/audit-classes.mjs",
     "typecheck:test": "tsc --noEmit -p tsconfig.test.json",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "sounds": "python scripts/make-sounds.py",
+    "release:manifest": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/manifest.ps1 -Repo ChenRy-1019/lexiflow",
+    "release:publish": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/publish.ps1 -Repo ChenRy-1019/lexiflow"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.12.4",
