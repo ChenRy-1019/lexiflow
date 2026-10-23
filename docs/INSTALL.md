@@ -1,5 +1,21 @@
 # 安装说明
 
+## 下载
+
+**主地址**（GitHub Releases）：
+
+https://github.com/ChenRy-1019/lexiflow/releases/latest
+
+在页面下方 **Assets** 里点 `LexiFlow_0.1.0_x64-setup.exe`。
+
+**如果 GitHub 下载很慢或打不开**，把下载链接前面加一个镜像前缀：
+
+```
+https://ghproxy.net/https://github.com/ChenRy-1019/lexiflow/releases/download/v0.1.0/LexiFlow_0.1.0_x64-setup.exe
+```
+
+或者用 `https://ghfast.top/` 替换开头的 `https://ghproxy.net/`，哪个快用哪个。
+
 ## 怎么装
 
 1. 双击 `LexiFlow_0.1.0_x64-setup.exe`
@@ -26,7 +42,8 @@
 
 发音录音缓存在同一目录下的 `audio\` 里。
 
-**这些数据只在你本机**，不会上传到任何服务器。
+**这些数据只在你本机**，不会上传到任何服务器。换电脑时可以在
+「偏好设置 → 数据与备份」里导出，再在新机器上导入。
 
 ## 发音需要联网
 
@@ -42,6 +59,14 @@
 卸载**不会**删除你的学习记录。如果想要彻底清干净，卸载后再手动删掉
 `%APPDATA%\app.lexiflow.desktop` 文件夹。
 
+## 怎么更新
+
+目前没有应用内自动更新。下载新的安装包，直接覆盖安装即可，
+**学习记录会保留**。
+
+新版本发布在同一个页面：
+https://github.com/ChenRy-1019/lexiflow/releases
+
 ## 常见问题
 
 **打开就闪退？**
@@ -53,9 +78,8 @@ https://developer.microsoft.com/microsoft-edge/webview2/
 安装包自带了 VC++ 运行时，正常不会遇到。如果遇到，装一下
 「Microsoft Visual C++ 2015-2022 Redistributable (x64)」。
 
-**怎么更新？**
-下载新的安装包，直接覆盖安装即可，学习记录会保留。
-新版本发布地址：（这里填你的发布链接）
-
 **词库能换成我自己的吗？**
 暂时只支持内置词库。自定义导入在计划中。
+
+**发现 bug 或想提建议？**
+https://github.com/ChenRy-1019/lexiflow/issues

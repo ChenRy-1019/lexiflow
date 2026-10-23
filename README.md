@@ -1,10 +1,12 @@
-# LexiFlow · 词汇流
+# LexiFlow
 
 一个本地优先的英语词汇学习桌面应用。数据全部留在本机，用 **FSRS** 科学记忆算法
 安排复习，用 **词根词缀** 帮你拆解生词。
 
-> 灵感来自 [Vocabulary Studio](https://github.com/Frinds-A/Vocabulary_Studio) 的产品
-> 形态，但代码与词库全部重新实现。详见 [数据来源与许可说明](docs/DATA_SOURCES.md)。
+**[下载最新版](https://github.com/ChenRy-1019/lexiflow/releases/latest)** ·
+[安装说明](docs/INSTALL.md) · [数据来源](docs/DATA_SOURCES.md)
+
+> Windows 10 / 11 64 位。双击安装，无需注册账号。
 
 ## 为什么做这个
 
@@ -13,11 +15,10 @@
 
 **记忆该在什么时候发生，由算法决定，而不是由我决定。**
 
-Vocabulary Studio 用的是固定间隔：1 天 → 2 天 → 4 天 → 7 天 → 15 天 → 30 天。
-这个阶梯把「abandon」和「ubiquitous」当成同一类词，结果是前者被拖到该忘的时候
-才复习，后者被反复打扰。FSRS 为每个词单独维护**记忆稳定度**（stability）和
-**难度**（difficulty），按目标留存率反推下次复习时间：记得牢的词自动拉长间隔，
-记不牢的词很快回来。
+固定间隔的阶梯（1 天 → 2 天 → 4 天 → 7 天 → 15 天 → 30 天）把「abandon」和
+「ubiquitous」当成同一类词，结果是前者被拖到该忘的时候才复习，后者被反复打扰。
+FSRS 为每个词单独维护**记忆稳定度**（stability）和**难度**（difficulty），按目标
+留存率反推下次复习时间：记得牢的词自动拉长间隔，记不牢的词很快回来。
 
 ## 功能
 
@@ -26,13 +27,13 @@ Vocabulary Studio 用的是固定间隔：1 天 → 2 天 → 4 天 → 7 天 �
 - **FSRS 调度** — 四个评分按钮（忘记 / 困难 / 记得 / 简单），每个按钮实时显示
   下次复习间隔，例如「3d」「2.1mo」
 - **记忆强度** — 每个词显示当前预计留存率，让你知道哪些词正在变模糊
-- **逐字母判定** — 拼错时用最长公共子序列对齐，标出真正错的那一个字母，
-  而不是笼统地判错
+- **逐字母判定** — 拼错时用最长公共子序列对齐，标出真正错的那一个字母
 - **词根词缀** — 内置 611 条词根词缀，其中 5,394 个词条附带了拆解
 - **词库浏览** — 按分类筛选、全库搜索、查看任意词书的全部词条
 - **生词本** — 答错不会自动收录，只有主动点击才进入
+- **断点续学** — 退出后可从上次的位置继续
+- **沉浸式练习** — 进入学习后隐藏侧栏，只留单词
 - **本地存储** — SQLite 单文件，学习记录不上传任何服务器
-- **数据导出** — 完整学习记录导出为 JSON
 
 内置词库共 **52,523** 条，分布在 10 本词书：
 
@@ -62,7 +63,7 @@ Vocabulary Studio 用的是固定间隔：1 天 → 2 天 → 4 天 → 7 天 �
 
 | 层 | 选型 | 说明 |
 | --- | --- | --- |
-| 桌面外壳 | [Tauri 2](https://tauri.app) | Rust 后端，安装包约 10 MB |
+| 桌面外壳 | [Tauri 2](https://tauri.app) | Rust 后端，安装包约 3 MB |
 | 前端 | React 19 + TypeScript + Vite | 无 UI 框架，样式全部手写 CSS 变量 |
 | 存储 | SQLite（`rusqlite`） | WAL 模式，单文件数据库 |
 | 调度 | [ts-fsrs](https://github.com/open-spaced-repetition/ts-fsrs) | FSRS 官方 TypeScript 实现 |
@@ -71,113 +72,24 @@ Vocabulary Studio 用的是固定间隔：1 天 → 2 天 → 4 天 → 7 天 �
 调度算法放在前端而非后端，是有意的：算法只有一份实现，且可以脱离数据库直接
 做单元测试。后端只负责持久化。
 
-## 快速开始
+## 快速开始（开发）
 
-### 直接运行
-
-项目里放了两个批处理脚本，双击即可：
-
-| 脚本 | 用途 |
-| --- | --- |
-| `启动 LexiFlow.bat` | 启动已打包好的正式版 |
-| `开发模式.bat` | 以热重载模式启动（改代码即时生效） |
-
-也可以直接运行安装包：
-
-```
-src-tauri\target\release\bundle\nsis\LexiFlow_0.1.0_x64-setup.exe
-```
-
-安装后会在开始菜单和桌面创建快捷方式。
-
-> 正式版是单文件程序，但 `lexicon.json`（词库资源）必须和 exe 放在同一目录。
-> 如果要把程序拷到别处，记得把这两个文件一起带走。
-
-### 环境要求
-
-- Node.js 20+
-- Rust 1.77+
-- Windows 上还需要 [Visual Studio Build Tools](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022)
-  （勾选「使用 C++ 的桌面开发」）
-
-### 安装依赖
+环境要求：Node.js 20+、Rust 1.77+，Windows 上还需要
+[Visual Studio Build Tools](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022)
+（勾选「使用 C++ 的桌面开发」）。
 
 ```bash
 npm install
+npm run lexicon:build   # 下载 ECDICT 并生成词库（约 65 MB，只需一次）
+npm run tauri:dev       # 开发模式，前端热重载
 ```
 
-### 构建词库
-
-首次运行会下载 ECDICT 数据集（约 65 MB）并生成 `data/lexicon.json`：
+打包与分发：
 
 ```bash
-npm run lexicon:build
+npm run tauri:build     # 生成安装包
+npm run package         # 生成可直接发给别人的 zip（约 3 MB）
 ```
-
-生成的词库不提交到仓库，按需本地构建即可。
-
-### 开发
-
-```bash
-npm run tauri:dev
-```
-
-### 打包
-
-```bash
-npm run tauri:build
-```
-
-产物在 `src-tauri/target/release/bundle/nsis/`。
-
-### 发给别人用
-
-打一个可以直接发给朋友的压缩包：
-
-```bash
-npm run package
-```
-
-生成 `release/LexiFlow-<版本>.zip`（约 3 MB），里面是安装包和一份中文安装说明。
-对方解压后双击 `LexiFlow_0.1.0_x64-setup.exe` 安装即可。
-
-安装包会自动检查 **WebView2** 运行时：Windows 11 自带，Windows 10 若缺失会
-自动下载安装（需要联网）。这一步写在 NSIS 脚本里，用户不会看到失败的窗口。
-
-首次运行时 Windows SmartScreen 可能提示「Windows 已保护你的电脑」——这是因为
-安装包没有购买代码签名证书，点「更多信息 → 仍要运行」即可。
-
-## 让人用上并且能更新
-
-分三件事，从简到难：
-
-**1. 直接发安装包（现在就能做）**
-
-跑 `npm run package`，把 zip 发过去。缺点是每次更新都要手动重发。
-
-**2. 放到 GitHub Releases（推荐）**
-
-免费，且是 Tauri 内置更新器的标准来源：
-
-1. 建一个仓库，把代码推上去（记得 `.gitignore` 已排除词库和大文件）。
-2. 生成一个签名密钥，它用来证明更新包确实来自你：
-   ```bash
-   npx tauri signer generate
-   ```
-   公钥填进 `tauri.conf.json` 的 `bundle.createUpdaterArtifacts` 与
-   `plugins.updater.pubkey`，私钥和密码留在本机，**不要提交**。
-3. 设置 `plugins.updater.endpoints` 指向发布地址，例如
-   `https://github.com/<你>/<仓库>/releases/latest/download/latest.json`。
-4. 打 tag 并上传安装包与 `latest.json`，用户端就会收到更新提示。
-
-**3. 应用内自动更新**
-
-需要 `@tauri-apps/plugin-updater`：启动时检查、提示、下载、重启替换。
-这一步依赖上一步的签名和 Release，建议先把分发包确认稳定再做。
-
-当前的安装包**还没有**自动更新能力，也没有签名——它是「手动发、手动更新」
-的版本。需要我把更新器接上时告诉我，我按上面第 2、3 步做。
-
 
 ## 项目结构
 
@@ -185,100 +97,44 @@ npm run package
 src/
   lib/
     fsrs.ts          FSRS 封装：评分、间隔预览、留存率估算
+    speech.ts        发音：录音缓存、系统语音回退、并发控制
+    week.ts          周表日期标签
     api.ts           与 Rust 后端的 IPC 桥接
     types.ts         领域类型定义
-  pages/
-    HomePage.tsx     今日计划
-    PracticePage.tsx 练习页，评分与反馈
-    LibraryPage.tsx  词库浏览
-    NotebookPage.tsx 生词本
-    StatsPage.tsx    学习统计
-    SettingsPage.tsx 偏好设置
-  components/
-    TitleBar.tsx     无边框窗口的标题栏
+  pages/             今日计划、练习、词库、生词本、统计、设置
+  components/        标题栏、开始学习对话框
   styles/global.css  设计令牌与全部样式
 
 src-tauri/src/
-  lib.rs       Tauri 命令：会话构建、评分记录、统计聚合
-  session.rs   会话选择与进度统计（纯逻辑，可单测）
+  lib.rs       Tauri 命令
+  session.rs   会话选择、进度统计、断点续学（纯逻辑，可单测）
   db.rs        SQLite 存储层
   lexicon.rs   词库加载与查询
-  util.rs      日期、文本归一化等工具
+  audio.rs     发音录音缓存
+  util.rs      日期、文本归一化
   error.rs     错误类型
 
-src-tauri/tests/
-  storage.rs     数据库读写
-  lexicon.rs     词库查询
-  review_flow.rs 完整复习流程
-
 scripts/
-  build-lexicon.ts      词库生成脚本
-  check-backend.py      词库完整性检查
-  capture-screenshots.ps1 界面截图（冒烟测试）
-  make-icon.py          图标生成
+  build-lexicon.ts      词库生成
+  package.ps1           生成分发包
+  audit-classes.mjs     检查组件用到的 CSS 类是否都有定义
 ```
 
 ## 测试
 
 ```bash
-npm test                        # 前端：FSRS 调度与 IPC 契约
-cd src-tauri && cargo test      # 后端：存储、词库、复习流程
+npm test                        # 前端：FSRS、发音调度、周表、IPC 契约、页面渲染
+cd src-tauri && cargo test      # 后端：存储、词库、复习流程、断点续学
+npm run audit:css               # 组件类名与样式表一致性
 python scripts/check-backend.py # 词库完整性
 ```
 
 前端测试里有一项会直接读取 `src-tauri/src/lib.rs`，比对 `#[tauri::command]`
 函数与 `generate_handler!` 注册表是否一致，也检查前端调用到的每个命令名都
-真实存在。两边不同步时，测试会失败而不是让程序在运行时崩溃。
+真实存在。两边不同步时测试会失败，而不是让程序在运行时崩溃。
 
-## 设计说明
-
-### 键盘操作
-
-| 按键 | 作用 |
-| --- | --- |
-| `Ctrl+1` … `Ctrl+5` | 今日计划 / 我的词库 / 开始学习 / 生词本 / 学习统计 |
-| `Ctrl+,` | 偏好设置 |
-| `Ctrl+R` | 重新朗读当前单词 |
-| `Enter` | 判定答案（拼写模式）／确认选项（选择模式） |
-| `Ctrl+Enter` | 跳过当前词 |
-| `Esc` | 返回上一页 |
-| `1` … `4` | 选择模式中直接选第 N 个选项 |
-
-页面切换用数字键而不是字母键，是因为 `Ctrl+L`、`Ctrl+P` 这类组合被 WebView
-自己占用，事件根本到不了页面。
-
-### 为什么用 FSRS 而不是固定间隔
-
-FSRS 建模的是**每个词各自的记忆状态**，而不是按学习次数套用一张时间表：
-
-- **stability** — 这个词目前能撑多少天不忘（以 90% 留存率为基准）
-- **difficulty** — 这个词本身有多难，范围 1–10
-
-下次复习时间由 `I(r, S) = (r^(1/DECAY) - 1) / FACTOR × S` 推出，`r` 是目标留存率。
-记得牢的词 stability 涨得快，间隔自然拉长；反复记错的词 stability 被压低，
-很快就要再见。
-
-在 Anki 社区的基准测试里，FSRS-6 相比默认算法能减少约 20% 的复习量，同时
-保持相近的长期留存率。
-
-### 为什么答错不自动进生词本
-
-自动收录会让生词本迅速膨胀成第二份词库，失去筛选的意义。Vocabulary Studio
-选择了同样的策略，LexiFlow 沿用了这一点——但把「错过次数」记了下来，方便按
-错误次数排序复习。
-
-### 为什么词库是打包进应用的
-
-词库在运行时不变，所以没有必要放进数据库。用 JSON 资源文件分发有三个好处：
-启动快、可以直接 diff、体积对安装包影响可忽略。
-
-## 贡献
-
-欢迎提交 issue 和 pull request。请注意：
-
-- 代码风格遵循现有文件的风格，不引入新的格式化工具
-- 涉及算法改动的 PR 请附带说明，以及改动前后的间隔对比
-- 不要提交 `data/_upstream/` 和 `data/lexicon.json`
+另有真实 DOM 挂载测试，会渲染练习页并检查它确实产出内容——曾经的 hook
+顺序错误会让整个页面空白，而类型检查发现不了。
 
 ## 许可
 
