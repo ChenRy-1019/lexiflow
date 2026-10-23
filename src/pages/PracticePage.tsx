@@ -346,6 +346,20 @@ export default function PracticePage({
   }, []);
 
   /**
+   * Forget the finished session.
+   *
+   * A round with nothing left to answer should not be offered as "continue"
+   * on the home page. This has to sit above the early returns in the render
+   * path: a hook after a conditional return breaks the rules of hooks, which
+   * React rejects by unmounting the tree.
+   */
+  useEffect(() => {
+    if (finished) {
+      void clearSession();
+    }
+  }, [finished]);
+
+  /**
    * Track the time spent practising.
    *
    * The clock starts when the page mounts and the elapsed time is written
@@ -703,18 +717,6 @@ export default function PracticePage({
       </div>
     );
   }
-
-  /**
-   * Forget the finished session.
-   *
-   * A round with nothing left to answer should not be offered as "continue"
-   * on the home page.
-   */
-  useEffect(() => {
-    if (finished) {
-      void clearSession();
-    }
-  }, [finished]);
 
   if (!current) {
     return (
