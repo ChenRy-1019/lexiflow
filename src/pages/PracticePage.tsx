@@ -14,7 +14,7 @@ import {
   type Choice,
 } from "../lib/api";
 import { formatInterval, previewIntervals, review as fsrsReview, retrievability } from "../lib/fsrs";
-import { speak, stopSpeaking, whenVoicesReady, type Accent } from "../lib/speech";
+import { prefetch, speak, stopSpeaking, whenVoicesReady, type Accent } from "../lib/speech";
 import type { FsrsCard, Rating, StudyMode, StudyScope } from "../lib/types";
 
 /** Compare two answers the way a learner would expect. */
@@ -183,32 +183,46 @@ export default function PracticePage({
       setStartedAt(Date.now());
       setLoading(false);
       
-      // Pre-warm the audio cache for the first word so it's ready when the
-      // auto-speak fires 350ms later.
+      // Warm the audio cache for the first word so the audible request that
+      // follows a moment later is served from memory. This makes no sound.
       if (mapped[0] && autoSpeak) {
-        void speak(mapped[0].word, accent);
+        void prefetch(mapped[0].word, accent);
       }
     },
     [autoSpeak, accent],
   );
 
-  /** Speak the current word. */
+  /**
+   * Speak the current word.
+   *
+   * Only the most recent request may clear the `speaking` flag, otherwise a
+   * superseded request finishing late would clear it while the newer one is
+   * still audible.
+   */
+  const speakToken = useRef(0);
+
   const pronounceCurrent = useCallback(
     async (text?: string) => {
       const word = text ?? current?.word;
       if (!word) return;
-      
-      // Stop any ongoing audio before starting new one
+
+      const token = speakToken.current + 1;
+      speakToken.current = token;
+
+      // Stop any ongoing audio before starting a new one.
       stopSpeaking();
       setSpeaking(true);
-      
+
       try {
         const outcome = await speak(word, accent);
+        if (token !== speakToken.current) return;
         if (outcome === "failed") {
           notify("暂时无法发音，请检查网络或系统语音设置");
         }
       } finally {
-        setSpeaking(false);
+        if (token === speakToken.current) {
+          setSpeaking(false);
+        }
       }
     },
     [current, accent, notify],

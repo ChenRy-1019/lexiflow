@@ -8,8 +8,15 @@
  * 2. The speech synthesiser installed on the machine. This always works but
  *    sounds flatter.
  *
- * The browser's own speech synthesis is the last resort, because the
- * WebView does not always provide an English voice.
+ * Only one of them may be audible at a time. Two failure modes made that
+ * untrue in practice, and both are handled here:
+ *
+ * - A slow request for an earlier word resolving after the learner had
+ *   already moved on. Its fallback voice would start speaking over the new
+ *   word. Every request carries a generation token and a superseded request
+ *   stops before it makes a sound.
+ * - Prefetching a word used to play it. Fetching and playing are now
+ *   separate operations, so warming the cache is silent.
  */
 
 import { pronounce } from "./api";
@@ -38,13 +45,18 @@ export function findSystemVoice(accent: Accent): SystemVoice | null {
   const voices = speechSynthesis.getVoices();
   if (voices.length === 0) return null;
 
-  const wanted = accent === "uk" ? /en[-_]gb|english.*(united kingdom|uk)|hazel/i : /en[-_]us|english.*united states|zira/i;
+  const wanted =
+    accent === "uk"
+      ? /en[-_]gb|english.*(united kingdom|uk)|hazel/i
+      : /en[-_]us|english.*united states|zira/i;
   const anyEnglish = /en[-_]/i;
 
   const exact = voices.find((voice) => wanted.test(voice.name) || wanted.test(voice.lang));
   if (exact) return { name: exact.name, lang: exact.lang };
 
-  const fallback = voices.find((voice) => anyEnglish.test(voice.lang) || /english/i.test(voice.name));
+  const fallback = voices.find(
+    (voice) => anyEnglish.test(voice.lang) || /english/i.test(voice.name),
+  );
   if (fallback) return { name: fallback.name, lang: fallback.lang };
 
   return null;
@@ -83,6 +95,17 @@ let player: HTMLAudioElement | null = null;
  */
 let currentUrl: string | null = null;
 
+/** Settles the promise of a playback that was interrupted. */
+let pendingResolve: (() => void) | null = null;
+
+/**
+ * The current request number.
+ *
+ * Every play request takes a number; a request whose number is no longer the
+ * current one has been superseded by a newer word and must stay silent.
+ */
+let generation = 0;
+
 /** Play a recording that the backend sent as base64. */
 export function playRecording(base64: string, rate = 1): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -110,17 +133,36 @@ export function playRecording(base64: string, rate = 1): Promise<void> {
 
     player.src = currentUrl;
     player.playbackRate = rate;
-    player.onended = () => resolve();
-    player.onerror = () => reject(new Error("cannot play the recording"));
-    void player.play().catch(reject);
+    pendingResolve = resolve;
+    player.onended = () => {
+      pendingResolve = null;
+      resolve();
+    };
+    player.onerror = () => {
+      pendingResolve = null;
+      reject(new Error("cannot play the recording"));
+    };
+    void player.play().catch((error) => {
+      pendingResolve = null;
+      reject(error);
+    });
   });
 }
 
-/** Stop whatever is currently playing. */
+/** Stop whatever is currently playing, and cancel anything still in flight. */
 export function stopSpeaking(): void {
+  // Invalidate every request that has not reached the speaker yet.
+  generation += 1;
+
+  if (pendingResolve) {
+    const resolve = pendingResolve;
+    pendingResolve = null;
+    resolve();
+  }
+
   if (player) {
     player.pause();
-    player.src = "";
+    player.removeAttribute("src");
   }
   if (currentUrl) {
     URL.revokeObjectURL(currentUrl);
@@ -132,7 +174,25 @@ export function stopSpeaking(): void {
 }
 
 /** How a word was pronounced, for the interface to report. */
-export type PronounceOutcome = "recording" | "browser" | "failed";
+export type PronounceOutcome = "recording" | "browser" | "superseded" | "failed";
+
+/**
+ * Download a word's recording without playing it.
+ *
+ * Used to warm the cache when a new word appears, so the audible request that
+ * follows a moment later is served from memory. It deliberately makes no
+ * sound: playing here used to overlap with the real request and produced two
+ * voices at once.
+ */
+export async function prefetch(word: string, accent: Accent): Promise<void> {
+  const text = word.trim();
+  if (!text) return;
+  try {
+    await pronounce(text, accent);
+  } catch {
+    // A failed prefetch is not worth reporting; the audible request retries.
+  }
+}
 
 /**
  * Pronounce a word.
@@ -148,16 +208,34 @@ export async function speak(
   const text = word.trim();
   if (!text) return "failed";
 
+  generation += 1;
+  const token = generation;
+
+  let result: Awaited<ReturnType<typeof pronounce>> | null = null;
   try {
-    const result = await pronounce(text, accent);
-    if (result.kind === "cached") {
-      await playRecording(result.data, rate);
-      return "recording";
-    }
+    result = await pronounce(text, accent);
   } catch {
-    // Fall through to the browser voice.
+    result = null;
   }
 
+  // A newer word took over while this one was downloading.
+  if (token !== generation) return "superseded";
+
+  if (result?.kind === "cached") {
+    try {
+      // The synthesiser and the recording must never overlap.
+      if (typeof speechSynthesis !== "undefined") speechSynthesis.cancel();
+      await playRecording(result.data, rate);
+      return "recording";
+    } catch {
+      // Fall through to the system voice.
+    }
+    if (token !== generation) return "superseded";
+  }
+
+  if (player) {
+    player.pause();
+  }
   if (speakWithBrowser(text, accent)) return "browser";
   return "failed";
 }
