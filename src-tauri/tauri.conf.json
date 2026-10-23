@@ -13,9 +13,9 @@
     "windows": [
       {
         "title": "LexiFlow · 词汇流",
-        "width": 1180,
-        "height": 720,
-        "minWidth": 960,
+        "width": 1280,
+        "height": 760,
+        "minWidth": 900,
         "minHeight": 600,
         "resizable": true,
         "decorations": false,
@@ -25,7 +25,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' asset: https://asset.localhost data:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost"
+      "csp": "default-src 'self'; img-src 'self' asset: https://asset.localhost data:; media-src 'self' asset: https://asset.localhost blob: data: file:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost"
     }
   },
   "bundle": {

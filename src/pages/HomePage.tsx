@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 
 import type { BookWithStats } from "../lib/api";
-import type { DashboardStats } from "../lib/types";
+import type { DashboardStats, StudyMode, StudyScope } from "../lib/types";
+import { weekDayLabels } from "../lib/week";
 
 /** A short line of encouragement shown under the plan. */
 const NOTES = [
@@ -14,115 +15,171 @@ const NOTES = [
 interface HomePageProps {
   stats: DashboardStats;
   books: BookWithStats[];
-  onStart: () => void;
+  onStart: (mode: StudyMode, scope: StudyScope) => void;
   onRefresh: () => void;
 }
 
+/** The three practice modes offered on the plan card. */
+const MODES: Array<{ id: StudyMode; label: string }> = [
+  { id: "spelling", label: "拼写" },
+  { id: "choice", label: "选择" },
+  { id: "dictation", label: "听写" },
+];
+
+const SCOPES: Array<{ id: StudyScope; label: string }> = [
+  { id: "mix", label: "新词 + 复习" },
+  { id: "new", label: "只学新词" },
+  { id: "review", label: "只复习" },
+];
+
 /** The learner's home page: today's plan, progress and the weekly chart. */
 export default function HomePage({ stats, books, onStart }: HomePageProps) {
-  const [scope, setScope] = useState<"mix" | "new" | "review">("mix");
+  const [mode, setMode] = useState<StudyMode>("spelling");
+  const [scope, setScope] = useState<StudyScope>("mix");
 
-  const note = useMemo(() => {
-    const index = new Date().getDate() % NOTES.length;
-    return NOTES[index];
-  }, []);
+  const note = useMemo(() => NOTES[new Date().getDate() % NOTES.length], []);
 
   const week = stats.weekly.length === 7 ? stats.weekly : [0, 0, 0, 0, 0, 0, 0];
   const weekMax = Math.max(1, ...week);
-  const labels = ["一", "二", "三", "四", "五", "六", "日"];
-  const todayIndex = (new Date().getDay() + 6) % 7;
+  const weekDays = useMemo(() => weekDayLabels(), []);
 
   const totalWords = books.reduce((sum, book) => sum + book.total, 0);
   const goal = 20;
   const goalProgress = Math.min(1, stats.todayNew / goal);
 
+  const hours = Math.floor(stats.studySeconds / 3600);
+  const minutes = Math.floor((stats.studySeconds % 3600) / 60);
+
   return (
     <div className="grid" style={{ gap: 18 }}>
-      <section className="card">
-        <div className="card__body" style={{ display: "flex", gap: 32 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="section-title" style={{ fontSize: 11, letterSpacing: "0.16em", color: "var(--ink-faint)", textTransform: "uppercase" }}>
-              Today&apos;s plan
-            </div>
-            <p style={{ fontFamily: "var(--font-en)", fontSize: 26, margin: "10px 0 4px" }}>
-              Keep the thread going.
-            </p>
-            <p className="gloss" style={{ color: "var(--ink-muted)", margin: "0 0 20px" }}>
-              {note}
-            </p>
+      {/* --- today's plan ------------------------------------------------- */}
+      <section className="card plan">
+        <div className="plan__main">
+          <div className="plan__eyebrow">TODAY&apos;S PLAN</div>
+          <p className="plan__quote">I think, therefore I am.</p>
+          <p className="plan__quote-zh">{note}</p>
 
-            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-              <button type="button" className="button button--primary" onClick={onStart}>
-                开始今日计划
-              </button>
-              <select
-                className="input"
-                style={{ width: "auto" }}
-                value={scope}
-                onChange={(event) => setScope(event.target.value as typeof scope)}
-                aria-label="学习范围"
-              >
-                <option value="mix">新词 + 复习</option>
-                <option value="new">只学新词</option>
-                <option value="review">只复习</option>
-              </select>
+          <div className="plan__actions">
+            <button
+              type="button"
+              className="button button--primary button--large"
+              onClick={() => onStart(mode, scope)}
+            >
+              开始学习
+            </button>
+            <div className="plan__modes">
+              {MODES.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`mode-pill ${mode === item.id ? "mode-pill--active" : ""}`}
+                  onClick={() => setMode(item.id)}
+                >
+                  {item.label}
+                </button>
+              ))}
             </div>
+            <select
+              className="input plan__scope"
+              value={scope}
+              onChange={(event) => setScope(event.target.value as StudyScope)}
+              aria-label="学习范围"
+            >
+              {SCOPES.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
           </div>
+        </div>
 
-          <div style={{ width: 240, flexShrink: 0 }}>
-            <div className="stat">
-              <span className="stat__label">今日新词</span>
-              <span className="stat__value">
-                {stats.todayNew}
-                <span className="stat__unit">/ {goal} 词</span>
-              </span>
-            </div>
-            <div className="meter" style={{ marginTop: 10 }}>
-              <div className="meter__fill" style={{ width: `${goalProgress * 100}%` }} />
-            </div>
-            <div style={{ display: "flex", gap: 18, marginTop: 20 }}>
-              <div className="stat">
-                <span className="stat__label">连续天数</span>
-                <span className="stat__value" style={{ fontSize: 20 }}>
-                  {stats.streak}
-                </span>
-              </div>
-              <div className="stat">
-                <span className="stat__label">已掌握</span>
-                <span className="stat__value" style={{ fontSize: 20 }}>
-                  {stats.mastered}
-                </span>
-              </div>
-            </div>
+        <div className="plan__side">
+          <div className="plan__side-row">
+            <span className="stat__label">今日新词</span>
+            <span className="plan__due">待复习 {stats.dueCount}</span>
+          </div>
+          <div className="plan__count">
+            <span className="plan__count-value">{stats.todayNew}</span>
+            <span className="plan__count-unit">词</span>
+          </div>
+          <div className="meter">
+            <div className="meter__fill" style={{ width: `${goalProgress * 100}%` }} />
+          </div>
+          <div className="plan__count-foot">
+            {stats.todayNew} / {goal}
           </div>
         </div>
       </section>
 
+      {/* --- weekly chart ------------------------------------------------- */}
       <section className="card">
         <div className="card__body">
           <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 4 }}>
             <h2 className="section-title">本周新词</h2>
             <span className="chip chip--outline">近 7 天</span>
           </div>
-          <p className="section-subtitle">每天第一次学到的单词计一次，重复复习不重复计数。</p>
+          <p className="section-subtitle">全部词书的单词与词组，按首次学习日计数。</p>
 
           <div className="bars">
             {week.map((value, index) => (
-              <div className="bar" key={labels[index]}>
+              <div className="bar" key={`${weekDays[index].label}-${index}`}>
                 <span className="bar__value">{value}</span>
                 <div className="bar__track">
                   <div
-                    className={`bar__fill ${index === todayIndex ? "" : "bar__fill--muted"}`}
+                    className={`bar__fill ${weekDays[index].isToday ? "" : "bar__fill--muted"}`}
                     style={{ height: `${(value / weekMax) * 100}%` }}
                   />
                 </div>
-                <span className="bar__label">{labels[index]}</span>
+                <span className={`bar__label ${weekDays[index].isToday ? "bar__label--today" : ""}`}>
+                  {weekDays[index].label}
+                </span>
               </div>
             ))}
           </div>
         </div>
       </section>
 
+      {/* --- summary ------------------------------------------------------ */}
+      <section className="grid grid--3">
+        <div className="card">
+          <div className="card__body">
+            <div className="stat">
+              <span className="stat__label">连续天数</span>
+              <span className="stat__value">
+                {stats.streak}
+                <span className="stat__unit">天</span>
+              </span>
+            </div>
+          </div>
+        </div>
+        <div className="card">
+          <div className="card__body">
+            <div className="stat">
+              <span className="stat__label">已掌握</span>
+              <span className="stat__value">
+                {stats.mastered}
+                <span className="stat__unit">词</span>
+              </span>
+            </div>
+          </div>
+        </div>
+        <div className="card">
+          <div className="card__body">
+            <div className="stat">
+              <span className="stat__label">累计学习</span>
+              <span className="stat__value">
+                {hours}
+                <span className="stat__unit">时</span>
+                {minutes}
+                <span className="stat__unit">分</span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* --- library overview --------------------------------------------- */}
       <section className="card">
         <div className="card__body">
           <h2 className="section-title">词库概览</h2>
@@ -144,7 +201,9 @@ export default function HomePage({ stats, books, onStart }: HomePageProps) {
                       style={{ width: `${book.total ? (book.mastered / book.total) * 100 : 0}%` }}
                     />
                   </div>
-                  <span className="book__meta">掌握 {book.mastered} / {book.total}</span>
+                  <span className="book__meta">
+                    掌握 {book.mastered} / {book.total}
+                  </span>
                 </div>
               </div>
             ))}

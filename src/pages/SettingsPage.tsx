@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
 
 import {
+  clearAudioCache,
+  fetchAudioCacheInfo,
   fetchDatabasePath,
   fetchLexiconTotal,
   fetchSetting,
   resetProgress,
   saveSetting,
+  type AudioCacheInfo,
 } from "../lib/api";
 
 interface SettingsPageProps {
@@ -19,6 +22,13 @@ export default function SettingsPage({ onReset, notify }: SettingsPageProps) {
   const [lexiconTotal, setLexiconTotal] = useState(0);
   const [dailyGoal, setDailyGoal] = useState("20");
   const [accent, setAccent] = useState("us");
+  const [autoSpeak, setAutoSpeak] = useState("true");
+  const [cache, setCache] = useState<AudioCacheInfo>({ count: 0, sizeBytes: 0, directory: "" });
+
+  /** Refresh the cache counters. */
+  const refreshCache = async () => {
+    setCache(await fetchAudioCacheInfo());
+  };
 
   useEffect(() => {
     void fetchDatabasePath().then(setDbPath);
@@ -29,6 +39,10 @@ export default function SettingsPage({ onReset, notify }: SettingsPageProps) {
     void fetchSetting("voiceAccent").then((value) => {
       if (value) setAccent(value);
     });
+    void fetchSetting("autoSpeak").then((value) => {
+      if (value !== null) setAutoSpeak(value);
+    });
+    void refreshCache();
   }, []);
 
   /** Persist a preference. */
@@ -80,7 +94,78 @@ export default function SettingsPage({ onReset, notify }: SettingsPageProps) {
                 <option value="uk">英式</option>
               </select>
             </label>
+
+            <label className="field">
+              <span className="field__label">自动朗读</span>
+              <select
+                className="input"
+                value={autoSpeak}
+                onChange={(event) => {
+                  setAutoSpeak(event.target.value);
+                  void persist("autoSpeak", event.target.value);
+                }}
+              >
+                <option value="true">开启</option>
+                <option value="false">关闭</option>
+              </select>
+            </label>
           </div>
+        </div>
+      </section>
+
+      <section className="card">
+        <div className="card__body">
+          <h2 className="section-title">发音缓存</h2>
+          <p className="section-subtitle">
+            单词发音首次播放时会联网下载并缓存，之后离线也能播放。
+          </p>
+
+          <div className="grid grid--2" style={{ gap: 16, marginBottom: 16 }}>
+            <div className="stat">
+              <span className="stat__label">已缓存发音</span>
+              <span className="stat__value" style={{ fontSize: 22 }}>
+                {cache.count}
+                <span className="stat__unit">条</span>
+              </span>
+            </div>
+            <div className="stat">
+              <span className="stat__label">占用空间</span>
+              <span className="stat__value" style={{ fontSize: 22 }}>
+                {(cache.sizeBytes / 1024 / 1024).toFixed(1)}
+                <span className="stat__unit">MB</span>
+              </span>
+            </div>
+          </div>
+
+          {cache.directory && (
+            <div className="field" style={{ marginBottom: 16 }}>
+              <span className="field__label">缓存位置</span>
+              <code
+                style={{
+                  display: "block",
+                  padding: "9px 12px",
+                  background: "var(--accent-soft)",
+                  borderRadius: "var(--radius)",
+                  fontSize: 12,
+                  wordBreak: "break-all",
+                }}
+              >
+                {cache.directory}
+              </code>
+            </div>
+          )}
+
+          <button
+            type="button"
+            className="button button--danger"
+            onClick={async () => {
+              await clearAudioCache();
+              await refreshCache();
+              notify("发音缓存已清空");
+            }}
+          >
+            清空发音缓存
+          </button>
         </div>
       </section>
 

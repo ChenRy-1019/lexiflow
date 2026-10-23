@@ -15,6 +15,8 @@ pub enum AppError {
     Vocabulary(String),
     #[error("{0}")]
     Other(String),
+    #[error("audio error: {0}")]
+    Audio(String),
 }
 
 /// Convenience alias for fallible backend operations.

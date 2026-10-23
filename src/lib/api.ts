@@ -234,3 +234,43 @@ export async function fetchLexiconTotal(): Promise<number> {
 export async function resetProgress(): Promise<void> {
   return call<void>("reset_progress", undefined, undefined);
 }
+
+/** How a word should be pronounced. */
+export type Pronunciation =
+  | { kind: "cached"; data: string }
+  | { kind: "system"; text: string };
+
+/** Get the pronunciation of a word. */
+export async function pronounce(word: string, accent: string): Promise<Pronunciation> {
+  return call<Pronunciation>(
+    "pronounce",
+    { word, accent },
+    { kind: "system", text: word },
+  );
+}
+
+/** Whether a word already has a cached recording. */
+export async function hasRecording(word: string, accent: string): Promise<boolean> {
+  return call<boolean>("has_recording", { word, accent }, false);
+}
+
+/** The state of the pronunciation cache. */
+export interface AudioCacheInfo {
+  count: number;
+  sizeBytes: number;
+  directory: string;
+}
+
+/** How many recordings are cached, and how much space they take. */
+export async function fetchAudioCacheInfo(): Promise<AudioCacheInfo> {
+  return call<AudioCacheInfo>(
+    "audio_cache_info",
+    undefined,
+    { count: 0, sizeBytes: 0, directory: "" },
+  );
+}
+
+/** Remove every cached recording. */
+export async function clearAudioCache(): Promise<void> {
+  return call<void>("clear_audio_cache", undefined, undefined);
+}

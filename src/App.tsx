@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { fetchBooks, fetchStats, type BookWithStats } from "./lib/api";
-import type { DashboardStats } from "./lib/types";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+
+import { fetchBooks, fetchStats, isTauri, type BookWithStats } from "./lib/api";
+import type { DashboardStats, StudyMode, StudyScope } from "./lib/types";
 import TitleBar from "./components/TitleBar";
 import HomePage from "./pages/HomePage";
 import LibraryPage from "./pages/LibraryPage";
@@ -42,9 +44,15 @@ const TITLES: Record<Page, { eyebrow: string; title: string }> = {
 
 export default function App() {
   const [page, setPage] = useState<Page>("home");
+  const [immersive, setImmersive] = useState(false);
   const [stats, setStats] = useState<DashboardStats>(EMPTY_STATS);
   const [books, setBooks] = useState<BookWithStats[]>([]);
   const [toast, setToast] = useState<string | null>(null);
+  /** The mode and scope chosen on the home page, handed to the practice page. */
+  const [startOptions, setStartOptions] = useState<{ mode: StudyMode; scope: StudyScope }>({
+    mode: "spelling",
+    scope: "mix",
+  });
 
   /** Refresh the counters shown in the sidebar and on the home page. */
   const refresh = useCallback(async () => {
@@ -63,25 +71,35 @@ export default function App() {
    * `Ctrl+1` through `Ctrl+5` switch between the pages. The letters are
    * avoided on purpose: several of them (`Ctrl+L`, `Ctrl+P`) are claimed by
    * the web view itself and never reach the page.
+   *
+   * `Esc` exits immersive mode when in practice.
    */
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && immersive) {
+        event.preventDefault();
+        setImmersive(false);
+        setPage("home");
+        return;
+      }
       if (!event.ctrlKey) return;
       const index = Number(event.key) - 1;
       const pages: Page[] = ["home", "library", "practice", "notebook", "stats"];
       if (Number.isInteger(index) && index >= 0 && index < pages.length) {
         event.preventDefault();
+        setImmersive(false);
         setPage(pages[index]);
         return;
       }
       if (event.key === ",") {
         event.preventDefault();
+        setImmersive(false);
         setPage("settings");
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [immersive]);
 
   /** Show a short message at the bottom of the window. */
   const notify = useCallback((message: string) => {
@@ -91,16 +109,48 @@ export default function App() {
 
   const heading = TITLES[page];
 
+  const enterImmersive = useCallback(
+    (mode?: StudyMode, scope?: StudyScope) => {
+      if (mode && scope) {
+        setStartOptions({ mode, scope });
+      }
+      setImmersive(true);
+      setPage("practice");
+    },
+    [],
+  );
+
+  const exitImmersive = useCallback(() => {
+    setImmersive(false);
+    setPage("home");
+  }, []);
+
   const content = useMemo(() => {
     switch (page) {
       case "home":
-        return <HomePage stats={stats} books={books} onStart={() => setPage("practice")} onRefresh={refresh} />;
+        return (
+          <HomePage
+            stats={stats}
+            books={books}
+            onStart={(mode, scope) => enterImmersive(mode, scope)}
+            onRefresh={refresh}
+          />
+        );
       case "library":
-        return <LibraryPage books={books} onStart={() => setPage("practice")} />;
+        return <LibraryPage books={books} onStart={() => enterImmersive()} />;
       case "practice":
-        return <PracticePage books={books} onExit={() => setPage("home")} onChange={refresh} notify={notify} />;
+        return (
+          <PracticePage
+            books={books}
+            initialMode={startOptions.mode}
+            initialScope={startOptions.scope}
+            onExit={exitImmersive}
+            onChange={refresh}
+            notify={notify}
+          />
+        );
       case "notebook":
-        return <NotebookPage onStart={() => setPage("practice")} onRefresh={refresh} />;
+        return <NotebookPage onStart={() => enterImmersive()} onRefresh={refresh} />;
       case "stats":
         return <StatsPage stats={stats} books={books} />;
       case "settings":
@@ -108,65 +158,100 @@ export default function App() {
       default:
         return null;
     }
-  }, [page, stats, books, refresh, notify]);
+  }, [page, stats, books, refresh, notify, enterImmersive, exitImmersive]);
 
   return (
-    <div className="app">
-      <aside className="sidebar">
-        <div className="sidebar__brand">
-          <div className="sidebar__mark">词</div>
-          <div>
-            <div className="sidebar__title">LexiFlow</div>
-            <div className="sidebar__subtitle">Vocabulary</div>
+    <div className={`app ${immersive ? "app--immersive" : ""}`}>
+      {!immersive && (
+        <aside className="sidebar">
+          <div className="sidebar__brand">
+            <div className="sidebar__mark">词</div>
+            <div>
+              <div className="sidebar__title">LexiFlow</div>
+              <div className="sidebar__subtitle">Vocabulary</div>
+            </div>
           </div>
-        </div>
 
-        <nav className="sidebar__nav">
-          {NAV.map((item) => (
+          <nav className="sidebar__nav">
+            {NAV.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={`nav-item ${page === item.id ? "nav-item--active" : ""}`}
+                onClick={() => {
+                  if (item.id === "practice") {
+                    enterImmersive();
+                  } else {
+                    setPage(item.id);
+                  }
+                }}
+              >
+                <span className="nav-item__icon" aria-hidden="true">
+                  {item.icon}
+                </span>
+                {item.label}
+              </button>
+            ))}
+          </nav>
+
+          <div className="sidebar__footer">
             <button
-              key={item.id}
               type="button"
-              className={`nav-item ${page === item.id ? "nav-item--active" : ""}`}
-              onClick={() => setPage(item.id)}
+              className={`nav-item ${page === "settings" ? "nav-item--active" : ""}`}
+              onClick={() => setPage("settings")}
             >
               <span className="nav-item__icon" aria-hidden="true">
-                {item.icon}
+                ⚙
               </span>
-              {item.label}
+              偏好设置
             </button>
-          ))}
-        </nav>
-
-        <div className="sidebar__footer">
-          <button
-            type="button"
-            className={`nav-item ${page === "settings" ? "nav-item--active" : ""}`}
-            onClick={() => setPage("settings")}
-          >
-            <span className="nav-item__icon" aria-hidden="true">
-              ⚙
-            </span>
-            偏好设置
-          </button>
-        </div>
-      </aside>
+          </div>
+        </aside>
+      )}
 
       <main className="main">
-        <TitleBar title="LexiFlow · 词汇流" />
-        <header className="topbar">
-          <div>
-            <div className="topbar__eyebrow">{heading.eyebrow}</div>
-            <h1 className="topbar__title">{heading.title}</h1>
+        {!immersive && <TitleBar title="LexiFlow · 词汇流" />}
+        {immersive && (
+          <div className="titlebar titlebar--minimal" data-tauri-drag-region>
+            <div className="titlebar__spacer" data-tauri-drag-region />
+            <div className="titlebar__buttons">
+              <button type="button" className="titlebar__button" onClick={() => {
+                if (!isTauri()) return;
+                void getCurrentWindow().minimize();
+              }} aria-label="最小化">
+                ─
+              </button>
+              <button type="button" className="titlebar__button" onClick={() => {
+                if (!isTauri()) return;
+                void getCurrentWindow().toggleMaximize();
+              }} aria-label="最大化">
+                ☐
+              </button>
+              <button type="button" className="titlebar__button titlebar__button--close" onClick={() => {
+                if (!isTauri()) return;
+                void getCurrentWindow().close();
+              }} aria-label="关闭">
+                ✕
+              </button>
+            </div>
           </div>
-          <div className="topbar__spacer" />
-          {stats.dueCount > 0 && page !== "practice" && (
-            <button type="button" className="chip chip--warning" onClick={() => setPage("practice")}>
-              待复习 {stats.dueCount}
-            </button>
-          )}
-        </header>
+        )}
+        {!immersive && (
+          <header className="topbar">
+            <div>
+              <div className="topbar__eyebrow">{heading.eyebrow}</div>
+              <h1 className="topbar__title">{heading.title}</h1>
+            </div>
+            <div className="topbar__spacer" />
+            {stats.dueCount > 0 && page !== "practice" && (
+              <button type="button" className="chip chip--warning" onClick={() => enterImmersive()}>
+                待复习 {stats.dueCount}
+              </button>
+            )}
+          </header>
+        )}
 
-        <div className={`content ${page === "practice" ? "content--flush" : ""}`} key={page}>
+        <div className={`content ${immersive ? "content--immersive" : ""}`} key={page}>
           {content}
         </div>
       </main>

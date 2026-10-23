@@ -5,12 +5,16 @@ import {
   buildChoices,
   buildSession,
   fetchCards,
+  fetchSetting,
   recordReview,
   removeFromNotebook,
+  saveSetting,
+  recordStudyTime,
   type BookWithStats,
   type Choice,
 } from "../lib/api";
 import { formatInterval, previewIntervals, review as fsrsReview, retrievability } from "../lib/fsrs";
+import { speak, stopSpeaking, whenVoicesReady, type Accent } from "../lib/speech";
 import type { FsrsCard, Rating, StudyMode, StudyScope } from "../lib/types";
 
 /** Compare two answers the way a learner would expect. */
@@ -87,15 +91,26 @@ interface QueueItem {
 
 interface PracticePageProps {
   books: BookWithStats[];
+  /** The mode chosen on the home page. */
+  initialMode?: StudyMode;
+  /** The scope chosen on the home page. */
+  initialScope?: StudyScope;
   onExit: () => void;
   onChange: () => void;
   notify: (message: string) => void;
 }
 
 /** The practice page: one word at a time, graded with FSRS. */
-export default function PracticePage({ books, onExit, onChange, notify }: PracticePageProps) {
-  const [mode, setMode] = useState<StudyMode>("spelling");
-  const [scope, setScope] = useState<StudyScope>("mix");
+export default function PracticePage({
+  books,
+  initialMode = "spelling",
+  initialScope = "mix",
+  onExit,
+  onChange,
+  notify,
+}: PracticePageProps) {
+  const [mode, setMode] = useState<StudyMode>(initialMode);
+  const [scope, setScope] = useState<StudyScope>(initialScope);
   const [bookId, setBookId] = useState<string>("");
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [index, setIndex] = useState(0);
@@ -107,9 +122,13 @@ export default function PracticePage({ books, onExit, onChange, notify }: Practi
     expected: string;
     revealed: boolean;
   } | null>(null);
+  const [copySpelling, setCopySpelling] = useState(false);
   const [notebookIds, setNotebookIds] = useState<Set<string>>(new Set());
   const [startedAt, setStartedAt] = useState<number>(Date.now());
   const [loading, setLoading] = useState(true);
+  const [accent, setAccent] = useState<Accent>("us");
+  const [speaking, setSpeaking] = useState(false);
+  const [autoSpeak, setAutoSpeak] = useState(true);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -160,6 +179,75 @@ export default function PracticePage({ books, onExit, onChange, notify }: Practi
     [],
   );
 
+  /** Speak the current word. */
+  const pronounceCurrent = useCallback(
+    async (text?: string) => {
+      const word = text ?? current?.word;
+      if (!word || speaking) return;
+      setSpeaking(true);
+      try {
+        const outcome = await speak(word, accent);
+        if (outcome === "failed") {
+          notify("暂时无法发音，请检查网络或系统语音设置");
+        }
+      } finally {
+        setSpeaking(false);
+      }
+    },
+    [current, accent, speaking, notify],
+  );
+
+  // The system voice list is only available after the web view has loaded it.
+  useEffect(() => {
+    void whenVoicesReady();
+  }, []);
+
+  // Read the saved accent and auto-speak preferences.
+  useEffect(() => {
+    void fetchSetting("voiceAccent").then((value) => {
+      if (value === "us" || value === "uk") setAccent(value);
+    });
+    void fetchSetting("autoSpeak").then((value) => {
+      if (value !== null) setAutoSpeak(value === "true");
+    });
+  }, []);
+
+  // Speak the word once when it first appears, then only on manual trigger.
+  useEffect(() => {
+    if (!current || loading) return;
+    
+    // Speak once after a short delay
+    if (autoSpeak) {
+      const timer = window.setTimeout(() => {
+        void pronounceCurrent(current.word);
+      }, 350);
+      return () => window.clearTimeout(timer);
+    }
+  }, [current?.entryId, autoSpeak, loading]);
+
+  // Stop the audio when the page is left.
+  useEffect(() => {
+    return () => stopSpeaking();
+  }, []);
+
+  /**
+   * Track the time spent practising.
+   *
+   * The clock starts when the page mounts and the elapsed time is written
+   * when the page unmounts, so the counter reflects real practice time
+   * rather than the number of words answered.
+   */
+  useEffect(() => {
+    const enteredAt = Date.now();
+    return () => {
+      const seconds = Math.round((Date.now() - enteredAt) / 1000);
+      // Ignore a page that was opened and closed straight away.
+      if (seconds >= 3) {
+        void recordStudyTime(seconds);
+      }
+    };
+  }, []);
+
   useEffect(() => {
     void load(bookId, scope);
   }, [load, bookId, scope]);
@@ -202,9 +290,21 @@ export default function PracticePage({ books, onExit, onChange, notify }: Practi
       expected: current.word,
       revealed: false,
     });
-  }, [current, typed, graded]);
+    
+    // Speak the word after correct submission in spelling mode
+    if (correct && mode === "spelling" && autoSpeak) {
+      void pronounceCurrent(current.word);
+    }
+  }, [current, typed, graded, mode, autoSpeak, pronounceCurrent]);
 
-  /** Reveal the answer without grading it as correct. */
+  /**
+   * Reveal the answer, then require the learner to copy it once.
+   *
+   * Showing the answer is not the end of the question: the learner types the
+   * word while it is visible, and only then is the question graded. That
+   * applies in every mode that has a text field, including dictation, where
+   * the answer would otherwise be unavailable after revealing.
+   */
   const reveal = useCallback(() => {
     if (!current || graded) return;
     setGraded({
@@ -213,7 +313,14 @@ export default function PracticePage({ books, onExit, onChange, notify }: Practi
       expected: current.word,
       revealed: true,
     });
-  }, [current, graded]);
+    setCopySpelling(true);
+    setTyped("");
+    // The dictation mode has no visible prompt, so play the word again to
+    // make the copy step possible.
+    if (mode === "dictation") {
+      void pronounceCurrent(current.word);
+    }
+  }, [current, graded, mode, pronounceCurrent]);
 
   /** Pick one of the multiple-choice options. */
   const pickChoice = useCallback(
@@ -228,6 +335,30 @@ export default function PracticePage({ books, onExit, onChange, notify }: Practi
     },
     [current, graded],
   );
+
+  /**
+   * Record the review and move on.
+   *
+   * The FSRS schedule is computed here, in the frontend, and then handed to
+   * the backend, which stores it. That keeps the algorithm in one place and
+   * makes it testable without a database.
+   */
+  /**
+   * Finish the copy step.
+   *
+   * Copying does not grade the word: it only proves the learner has read the
+   * answer. The answer is then hidden and the same word is typed again from
+   * memory, which is what actually counts. The reveal therefore costs the
+   * learner two passes instead of one.
+   */
+  const finishCopy = useCallback(() => {
+    if (!current || !copySpelling) return;
+    setCopySpelling(false);
+    setGraded(null);
+    setTyped("");
+    // Move the caret back so the blind attempt starts cleanly.
+    window.setTimeout(() => inputRef.current?.focus(), 50);
+  }, [current, copySpelling]);
 
   /**
    * Record the review and move on.
@@ -258,6 +389,7 @@ export default function PracticePage({ books, onExit, onChange, notify }: Practi
       setIndex((value) => value + 1);
       setTyped("");
       setGraded(null);
+      setCopySpelling(false);
       setStartedAt(Date.now());
     },
     [current, graded, mode, startedAt, onChange],
@@ -337,11 +469,20 @@ export default function PracticePage({ books, onExit, onChange, notify }: Practi
         const index = Number(event.key) - 1;
         const choice = choices[index];
         if (choice && !graded) pickChoice(choice);
+        return;
+      }
+
+      // F1, F2 and F3 switch between the three practice modes.
+      if (event.key === "F1" || event.key === "F2" || event.key === "F3") {
+        event.preventDefault();
+        const next: StudyMode =
+          event.key === "F1" ? "spelling" : event.key === "F2" ? "choice" : "dictation";
+        setMode(next);
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [graded, commit, skip, mode, choices, pickChoice, onExit]);
+  }, [graded, commit, skip, mode, choices, pickChoice, onExit, pronounceCurrent]);
 
   /**
    * The answer field handles Enter itself.
@@ -356,7 +497,14 @@ export default function PracticePage({ books, onExit, onChange, notify }: Practi
    * state and rate the word that was only just graded.
    */
   const onInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key !== "Enter") return;
+    if (event.key !== "Enter") {
+        // Ctrl+R replays the pronunciation.
+        if (event.ctrlKey && event.key.toLowerCase() === "r") {
+          event.preventDefault();
+          void pronounceCurrent();
+        }
+        return;
+      }
     event.preventDefault();
     handledEnter.current = true;
     if (graded) {
@@ -404,10 +552,9 @@ export default function PracticePage({ books, onExit, onChange, notify }: Practi
 
   return (
     <div className="practice">
-      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", justifyContent: "center" }}>
+      <div className="practice__toolbar">
         <select
           className="input"
-          style={{ width: "auto" }}
           value={bookId}
           onChange={(event) => setBookId(event.target.value)}
           aria-label="词书"
@@ -421,7 +568,6 @@ export default function PracticePage({ books, onExit, onChange, notify }: Practi
         </select>
         <select
           className="input"
-          style={{ width: "auto" }}
           value={scope}
           onChange={(event) => setScope(event.target.value as StudyScope)}
           aria-label="范围"
@@ -432,7 +578,6 @@ export default function PracticePage({ books, onExit, onChange, notify }: Practi
         </select>
         <select
           className="input"
-          style={{ width: "auto" }}
           value={mode}
           onChange={(event) => setMode(event.target.value as StudyMode)}
           aria-label="模式"
@@ -448,11 +593,48 @@ export default function PracticePage({ books, onExit, onChange, notify }: Practi
         {strength !== null && (
           <span className="chip chip--outline">记忆强度 {Math.round(strength * 100)}%</span>
         )}
+
+        <button
+          type="button"
+          className="chip"
+          onClick={() => void pronounceCurrent()}
+          disabled={speaking}
+          title="朗读（Ctrl+R）"
+        >
+          {speaking ? "🔊 朗读中" : "🔊 发音"}
+        </button>
+
+        <select
+          className="input"
+          value={accent}
+          onChange={(event) => {
+            const next = event.target.value as Accent;
+            setAccent(next);
+            void saveSetting("voiceAccent", next);
+          }}
+          aria-label="口音"
+        >
+          <option value="us">美音</option>
+          <option value="uk">英音</option>
+        </select>
+
+        <button
+          type="button"
+          className={`chip ${autoSpeak ? "chip--on" : ""}`}
+          onClick={() => {
+            const next = !autoSpeak;
+            setAutoSpeak(next);
+            void saveSetting("autoSpeak", String(next));
+          }}
+          title="自动朗读"
+        >
+          {autoSpeak ? "自动朗读 开" : "自动朗读 关"}
+        </button>
       </div>
 
       {mode === "choice" ? (
         <div className="practice__stage">
-          <p className="practice__pos word">{current.word}</p>
+          <p className="practice__word">{current.word}</p>
           <p className="practice__pos">选出正确的释义</p>
           <div className="choices">
             {choices.map((choice) => {
@@ -477,12 +659,60 @@ export default function PracticePage({ books, onExit, onChange, notify }: Practi
             })}
           </div>
         </div>
+      ) : mode === "dictation" ? (
+        <div className="practice__stage">
+          <p className="practice__pos">听发音，写出这个单词</p>
+          <button
+            type="button"
+            className="dictation__play"
+            onClick={() => void pronounceCurrent()}
+            disabled={speaking}
+            title="播放（Ctrl+R）"
+          >
+            {speaking ? "🔊" : "▶"}
+          </button>
+          <p className="practice__pos" style={{ marginTop: 10 }}>
+            {current.phrase ? "词组" : current.pos} · {current.word.length} 个字母
+          </p>
+
+          <div className="practice__slots">
+            {Array.from({
+              length: Math.max(current.word.replace(/[^a-z]/gi, "").length, typedLetters.length),
+            }).map((_, slotIndex) => {
+              const char = typedLetters[slotIndex] ?? "";
+              const isWrong = graded && !graded.correct && graded.marks[slotIndex] === false;
+              const isRight = graded && !graded.correct && graded.marks[slotIndex] === true;
+              const classes = ["slot"];
+              if (isWrong) classes.push("slot--wrong");
+              else if (isRight) classes.push("slot--right");
+              else if (slotIndex === typedLetters.length && !graded) classes.push("slot--active");
+              return (
+                <span key={slotIndex} className={classes.join(" ")}>
+                  {char}
+                </span>
+              );
+            })}
+          </div>
+
+          <input
+            ref={inputRef}
+            className="input practice__input"
+            value={typed}
+            disabled={Boolean(graded) && !copySpelling}
+            onChange={(event) => setTyped(event.target.value)}
+            onKeyDown={onInputKeyDown}
+            placeholder={copySpelling ? "照着拼写" : "听音写词"}
+            autoComplete="off"
+            spellCheck={false}
+            aria-label="答案"
+          />
+        </div>
       ) : (
         <div className="practice__stage">
-          <div className="practice__pos">{current.meaning}</div>
           <p className="practice__prompt gloss">{current.meaning}</p>
           <p className="practice__pos">
-            {current.phrase ? "词组" : current.pos} · {current.phonetic ? `/${current.phonetic}/` : `${current.word.length} 个字母`}
+            {current.phrase ? "词组" : current.pos}
+            {current.phonetic ? ` · /${current.phonetic}/` : ` · ${current.word.length} 个字母`}
           </p>
 
           <div className="practice__slots">
@@ -506,17 +736,23 @@ export default function PracticePage({ books, onExit, onChange, notify }: Practi
 
           <input
             ref={inputRef}
-            className="input"
-            style={{ textAlign: "center", fontFamily: "var(--font-en)", fontSize: 18 }}
+            className="input practice__input"
             value={typed}
-            disabled={Boolean(graded)}
+            disabled={Boolean(graded) && !copySpelling}
             onChange={(event) => setTyped(event.target.value)}
             onKeyDown={onInputKeyDown}
-            placeholder="在这里输入英文"
+            placeholder={copySpelling ? "照着拼写" : "在这里输入英文"}
             autoComplete="off"
             spellCheck={false}
             aria-label="答案"
           />
+        </div>
+      )}
+
+      {copySpelling && (
+        <div className="copy-panel">
+          <div className="copy-panel__label">看着这个单词抄写一遍</div>
+          <div className="copy-panel__word">{current.word}</div>
         </div>
       )}
 
@@ -534,52 +770,80 @@ export default function PracticePage({ books, onExit, onChange, notify }: Practi
             </button>
           )}
         </div>
+      ) : copySpelling ? (
+        /* Copy step: the answer is visible, so the only action is to submit. */
+        <div className="practice__actions">
+          <button
+            type="button"
+            className="button button--primary"
+            onClick={finishCopy}
+            disabled={typed.trim().length === 0}
+          >
+            抄写完成，再默写一遍
+          </button>
+        </div>
       ) : (
-        <div style={{ width: "100%", maxWidth: 620, display: "flex", flexDirection: "column", gap: 16 }}>
-          <div className="practice__feedback">
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-              <span className={`chip ${graded.correct ? "chip--success" : "chip--warning"}`}>
-                {graded.correct ? "答对了" : graded.revealed ? "已显示答案" : "拼写有误"}
-              </span>
-              <span className="practice__answer word">{graded.expected}</span>
-            </div>
-            {current.meaning && (
-              <p className="gloss" style={{ color: "var(--ink-muted)", margin: "0 0 6px" }}>
-                {current.meaning}
-              </p>
-            )}
-            {current.etymology && (
-              <p className="gloss" style={{ fontSize: 12, color: "var(--ink-faint)", margin: "0 0 6px" }}>
-                {current.etymology}
-              </p>
-            )}
-            {current.example && (
-              <p className="word" style={{ fontSize: 13, color: "var(--ink-muted)", margin: 0 }}>
-                {current.example}
-                {current.exampleZh && (
-                  <span className="gloss" style={{ display: "block", fontSize: 12, color: "var(--ink-faint)" }}>
-                    {current.exampleZh}
-                  </span>
-                )}
-              </p>
-            )}
-          </div>
-
-          <div className="ratings">
-            {([1, 2, 3, 4] as Rating[]).map((rating) => (
-              <button key={rating} type="button" className="rating" onClick={() => void commit(rating)}>
-                <span className="rating__label">
-                  {rating === 1 ? "忘记" : rating === 2 ? "困难" : rating === 3 ? "记得" : "简单"}
-                </span>
-                <span className="rating__interval">{formatInterval(intervals[rating])}</span>
-              </button>
-            ))}
-          </div>
-
-          <div className="practice__actions">
+        <div className="review">
+          <div className="review__answer">
+            <span className={`review__badge ${graded.correct ? "review__badge--ok" : "review__badge--miss"}`}>
+              {graded.correct ? "答对了" : graded.revealed ? "已显示答案" : "拼写有误"}
+            </span>
+            <span className="review__word">{graded.expected}</span>
             <button
               type="button"
-              className="button button--small"
+              className="review__speak"
+              onClick={() => void pronounceCurrent(graded.expected)}
+              disabled={speaking}
+              aria-label="朗读"
+            >
+              🔊
+            </button>
+          </div>
+
+          {current.phonetic && (
+            <p className="review__phonetic">/{current.phonetic}/</p>
+          )}
+
+          {current.etymology && (
+            <p className="review__etymology">{current.etymology}</p>
+          )}
+
+          {current.example && (
+            <p className="review__example">
+              {current.example}
+              {current.exampleZh && <span className="review__example-zh">{current.exampleZh}</span>}
+            </p>
+          )}
+
+          {/*
+            The four FSRS buttons sit right under the answer they are grading,
+            labelled with the interval each one would produce, so the choice
+            has a visible consequence instead of being decoration.
+          */}
+          <div className="review__ratings">
+            <span className="review__ratings-label">这次记住了吗</span>
+            <div className="review__ratings-row">
+              {([1, 2, 3, 4] as Rating[]).map((rating) => (
+                <button
+                  key={rating}
+                  type="button"
+                  className={`grade grade--${rating}`}
+                  onClick={() => void commit(rating)}
+                  title={`下次复习：${formatInterval(intervals[rating])}`}
+                >
+                  <span className="grade__name">
+                    {rating === 1 ? "忘记" : rating === 2 ? "困难" : rating === 3 ? "记得" : "简单"}
+                  </span>
+                  <span className="grade__interval">{formatInterval(intervals[rating])}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="review__tools">
+            <button
+              type="button"
+              className="button button--small button--ghost"
               onClick={() => void toggleNotebook(current.entryId)}
             >
               {notebookIds.has(current.entryId) ? "移出生词本" : "加入生词本"}

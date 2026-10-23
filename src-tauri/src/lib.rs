@@ -11,6 +11,7 @@
 //! maths stays in one place, in TypeScript, where it can be unit tested with
 //! the same code the UI uses.
 
+mod audio;
 mod db;
 mod error;
 mod lexicon;
@@ -43,6 +44,8 @@ pub const MASTERY_THRESHOLD: i64 = 2;
 pub struct AppState {
     pub db: Mutex<Db>,
     pub lexicon: SharedLexicon,
+    /// Downloaded pronunciation recordings.
+    pub audio: audio::AudioCache,
 }
 
 /// A wordbook plus its live counters.
@@ -370,19 +373,25 @@ fn build_choices(
             .collect();
     }
 
-    // Deterministically pick three distractors that share the correct answer's
-    // shape, so the options are plausible rather than obviously wrong.
+    // Pick three random distractors from the pool.
     let mut distractors: Vec<&Entry> = pool
         .iter()
         .filter(|candidate| candidate.id != entry_id && candidate.meaning != entry.meaning)
         .copied()
         .collect();
-    distractors.sort_by(|a, b| a.word.cmp(&b.word));
 
-    let step = (distractors.len() / 3).max(1);
+    // Shuffle and take 3 for variety.
+    let mut rng = distractors.len();
+    let mut seed = (distractors.len() as u64) ^ (entry_id.len() as u64) ^ (now_ms() as u64);
+    while rng > 1 {
+        seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        let target = (seed >> 33) as usize % rng;
+        rng -= 1;
+        distractors.swap(rng, target);
+    }
+
     let mut choices: Vec<Choice> = distractors
         .iter()
-        .step_by(step)
         .take(3)
         .map(|candidate| Choice {
             entry_id: candidate.id.clone(),
@@ -558,6 +567,67 @@ fn lexicon_total(state: State<'_, AppState>) -> AppResult<usize> {
     Ok(state.lexicon.total_entries())
 }
 
+/// Get the pronunciation of a word.
+///
+/// A cached recording is returned when there is one. Otherwise the recording
+/// is downloaded and cached; if that fails the caller is told to use the
+/// system voice instead.
+#[tauri::command]
+fn pronounce(
+    state: State<'_, AppState>,
+    word: String,
+    accent: String,
+) -> audio::Pronunciation {
+    let accent = audio::Accent::parse(&accent);
+
+    match state.audio.fetch(&word, accent) {
+        Ok(path) => match state.audio.read_base64(&path) {
+            Ok(data) => audio::Pronunciation::Cached { data },
+            // The file was written but cannot be read back, so fall back to
+            // the system voice rather than failing outright.
+            Err(_) => audio::Pronunciation::System {
+                text: word.trim().to_string(),
+            },
+        },
+        // The system voice always works, so it is the fallback rather than
+        // an error the learner has to deal with.
+        Err(_) => audio::Pronunciation::System {
+            text: word.trim().to_string(),
+        },
+    }
+}
+
+/// Whether a word already has a cached recording.
+#[tauri::command]
+fn has_recording(state: State<'_, AppState>, word: String, accent: String) -> bool {
+    state.audio.is_cached(&word, audio::Accent::parse(&accent))
+}
+
+/// How many recordings are cached, and how much space they take.
+#[tauri::command]
+fn audio_cache_info(state: State<'_, AppState>) -> AudioCacheInfo {
+    AudioCacheInfo {
+        count: state.audio.count(),
+        size_bytes: state.audio.size(),
+        directory: state.audio.root().to_string_lossy().to_string(),
+    }
+}
+
+/// Remove every cached recording.
+#[tauri::command]
+fn clear_audio_cache(state: State<'_, AppState>) -> AppResult<()> {
+    state.audio.clear()
+}
+
+/// The state of the pronunciation cache.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AudioCacheInfo {
+    pub count: usize,
+    pub size_bytes: u64,
+    pub directory: String,
+}
+
 /// Entry point used by the mobile and desktop shells.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -569,9 +639,16 @@ pub fn run() {
             let db = Db::open(db::default_db_path(&handle)?)?;
             let lexicon = lexicon::load_bundled(&handle)?;
 
+            let audio_dir = handle
+                .path()
+                .app_data_dir()
+                .map_err(|err| AppError::Io(format!("cannot resolve app data dir: {err}")))?
+                .join("audio");
+
             app.manage(AppState {
                 db: Mutex::new(db),
                 lexicon,
+                audio: audio::AudioCache::new(audio_dir),
             });
             Ok(())
         })
@@ -596,6 +673,10 @@ pub fn run() {
             set_setting,
             database_path,
             lexicon_total,
+            pronounce,
+            has_recording,
+            audio_cache_info,
+            clear_audio_cache,
         ])
         .run(tauri::generate_context!())
         .expect("error while running LexiFlow");

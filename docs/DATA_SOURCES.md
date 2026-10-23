@@ -49,6 +49,26 @@ ECDICT 的 `LICENSE` 文件以 `MIT License` 授权，版权归 Linwei 所有。
 两步同时成立，或者词根本身长度不小于 5 时才会写入 `etymology` 字段。这样
 可以避免把 `art`、`ter` 这类短词根错误地匹配到大量无关单词上。
 
+## 发音来源
+
+单词发音取自有道词典的真人录音接口：
+
+```
+https://dict.youdao.com/dictvoice?audio=<单词>&type=<1 英音 / 2 美音>
+```
+
+返回的是标准 MP3。LexiFlow 把录音缓存到
+`%APPDATA%\app.lexiflow.desktop\audio\`，文件名是「口音 + 单词」的 SHA-256
+前 16 字节，所以同一个词只需下载一次，之后离线也能播放。
+
+拿不到录音时（离线、接口不可用、单词没有录音）会退回系统语音：优先匹配
+Windows 自带的英文声音（美式 `Microsoft Zira Desktop`、英式
+`Microsoft Hazel Desktop`），都没有则用浏览器内置的语音合成。
+
+这个接口是第三方服务，没有 SLA，也不保证长期可用。LexiFlow 的定位是
+「有网时用真人录音，没网时用系统语音」，不依赖它才能用。录音本身不随
+安装包分发，而是在用户第一次播放时按需下载。
+
 ## 生成检查
 
 构建脚本在写出文件前会检查：

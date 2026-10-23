@@ -1,4 +1,4 @@
-param(
+﻿param(
     [Parameter(Mandatory = $true)][string]$Exe,
     [Parameter(Mandatory = $true)][string]$OutDir
 )
@@ -44,7 +44,7 @@ function Save-Shot([IntPtr]$handle, [string]$name) {
 
     if ($width -lt 200 -or $height -lt 200) {
         [Native]::ShowWindow($handle, 9) | Out-Null
-        [Native]::MoveWindow($handle, 320, 40, 1240, 780, $true) | Out-Null
+        [Native]::MoveWindow($handle, 60, 30, 1400, 820, $true) | Out-Null
         [Native]::SetForegroundWindow($handle) | Out-Null
         Start-Sleep -Seconds 2
         $rect = New-Object Native+RECT
@@ -94,7 +94,7 @@ if ($process.HasExited) {
 
 $handle = $process.MainWindowHandle
 [Native]::ShowWindow($handle, 9) | Out-Null
-[Native]::MoveWindow($handle, 320, 40, 1240, 780, $true) | Out-Null
+[Native]::MoveWindow($handle, 60, 30, 1400, 820, $true) | Out-Null
 [Native]::SetForegroundWindow($handle) | Out-Null
 Start-Sleep -Seconds 4
 
@@ -129,6 +129,13 @@ Save-Shot $handle "05-graded"
 Write-Host "Rating the word"
 Press "{ENTER}" 1500
 Save-Shot $handle "06-rated"
+
+# --- dictation ------------------------------------------------------------
+# The dictation mode is driven by the audio, so it gets its own screenshot.
+Write-Host "Dictation mode"
+Press "^3" 2000
+Press "{F3}" 2500
+Save-Shot $handle "09-dictation"
 
 # --- statistics ------------------------------------------------------------
 Write-Host "Statistics page"

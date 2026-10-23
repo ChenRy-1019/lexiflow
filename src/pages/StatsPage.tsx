@@ -1,6 +1,7 @@
-import { useMemo } from "react";
+﻿import { useMemo } from "react";
 
 import type { BookWithStats } from "../lib/api";
+import { weekDayLabels } from "../lib/week";
 import type { DashboardStats } from "../lib/types";
 
 interface StatsPageProps {
@@ -13,8 +14,7 @@ export default function StatsPage({ stats, books }: StatsPageProps) {
   const week = stats.weekly.length === 7 ? stats.weekly : [0, 0, 0, 0, 0, 0, 0];
   const weekMax = Math.max(1, ...week);
   const weekTotal = week.reduce((sum, value) => sum + value, 0);
-  const labels = ["一", "二", "三", "四", "五", "六", "日"];
-  const todayIndex = (new Date().getDay() + 6) % 7;
+  const weekDays = useMemo(() => weekDayLabels(), []);
 
   const hours = Math.floor(stats.studySeconds / 3600);
   const minutes = Math.floor((stats.studySeconds % 3600) / 60);
@@ -76,15 +76,17 @@ export default function StatsPage({ stats, books }: StatsPageProps) {
             <p className="section-subtitle">共 {weekTotal} 词</p>
             <div className="bars">
               {week.map((value, index) => (
-                <div className="bar" key={labels[index]}>
+                <div className="bar" key={`${weekDays[index].label}-${index}`}>
                   <span className="bar__value">{value}</span>
                   <div className="bar__track">
                     <div
-                      className={`bar__fill ${index === todayIndex ? "" : "bar__fill--muted"}`}
+                      className={`bar__fill ${weekDays[index].isToday ? "" : "bar__fill--muted"}`}
                       style={{ height: `${(value / weekMax) * 100}%` }}
                     />
                   </div>
-                  <span className="bar__label">{labels[index]}</span>
+                  <span className={`bar__label ${weekDays[index].isToday ? "bar__label--today" : ""}`}>
+                    {weekDays[index].label}
+                  </span>
                 </div>
               ))}
             </div>
