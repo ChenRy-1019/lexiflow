@@ -1,0 +1,13 @@
+node_modules/
+dist/
+src-tauri/target/
+src-tauri/gen/
+
+# Upstream datasets and the generated lexicon are not committed.
+data/_upstream/
+data/lexicon.json
+
+*.log
+.DS_Store
+.idea/
+.vscode/
