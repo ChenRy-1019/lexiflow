@@ -1,8 +1,0 @@
-Pair the English quote with its Chinese line
-
-The plan card showed a fixed English sentence above a rotating Chinese
-line, so most days the two said different things. The quotes are now
-stored as pairs and chosen together.
-
-The font size follows the viewport, because the English lines are longer
-than the one that was hard-coded.
