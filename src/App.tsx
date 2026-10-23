@@ -5,6 +5,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { fetchBooks, fetchStats, isTauri, type BookWithStats } from "./lib/api";
 import type { DashboardStats, StudyMode, StudyScope } from "./lib/types";
 import TitleBar from "./components/TitleBar";
+import StartDialog, { type StartChoice } from "./components/StartDialog";
 import HomePage from "./pages/HomePage";
 import LibraryPage from "./pages/LibraryPage";
 import NotebookPage from "./pages/NotebookPage";
@@ -49,10 +50,14 @@ export default function App() {
   const [books, setBooks] = useState<BookWithStats[]>([]);
   const [toast, setToast] = useState<string | null>(null);
   /** The mode and scope chosen on the home page, handed to the practice page. */
-  const [startOptions, setStartOptions] = useState<{ mode: StudyMode; scope: StudyScope }>({
-    mode: "spelling",
-    scope: "mix",
-  });
+  const [startOptions, setStartOptions] = useState<{
+    bookId: string;
+    mode: StudyMode;
+    scope: StudyScope;
+    limit: number;
+  }>({ bookId: "", mode: "spelling", scope: "mix", limit: 20 });
+  /** Whether the start dialog is open. */
+  const [startDialogOpen, setStartDialogOpen] = useState(false);
 
   /** Refresh the counters shown in the sidebar and on the home page. */
   const refresh = useCallback(async () => {
@@ -109,20 +114,31 @@ export default function App() {
 
   const heading = TITLES[page];
 
-  const enterImmersive = useCallback(
-    (mode?: StudyMode, scope?: StudyScope) => {
-      if (mode && scope) {
-        setStartOptions({ mode, scope });
-      }
-      setImmersive(true);
-      setPage("practice");
-    },
-    [],
-  );
+  /**
+   * Open the start dialog.
+   *
+   * Choosing a book and a word count is a per-session decision, so the
+   * dialog always comes first; `preferredBook` lets the library start with a
+   * particular book already selected.
+   */
+  const openStartDialog = useCallback((preferredBook?: string) => {
+    if (preferredBook) {
+      setStartOptions((prev) => ({ ...prev, bookId: preferredBook }));
+    }
+    setStartDialogOpen(true);
+  }, []);
 
   const exitImmersive = useCallback(() => {
     setImmersive(false);
     setPage("home");
+  }, []);
+
+  /** Enter practice with the choice the dialog returned. */
+  const startSession = useCallback((choice: StartChoice) => {
+    setStartOptions(choice);
+    setStartDialogOpen(false);
+    setImmersive(true);
+    setPage("practice");
   }, []);
 
   const content = useMemo(() => {
@@ -132,25 +148,30 @@ export default function App() {
           <HomePage
             stats={stats}
             books={books}
-            onStart={(mode, scope) => enterImmersive(mode, scope)}
+            onStart={(mode, scope) => {
+              setStartOptions((prev) => ({ ...prev, mode, scope }));
+              setStartDialogOpen(true);
+            }}
             onRefresh={refresh}
           />
         );
       case "library":
-        return <LibraryPage books={books} onStart={() => enterImmersive()} />;
+        return <LibraryPage books={books} onStart={(bookId) => openStartDialog(bookId ?? undefined)} />;
       case "practice":
         return (
           <PracticePage
             books={books}
+            initialBookId={startOptions.bookId}
             initialMode={startOptions.mode}
             initialScope={startOptions.scope}
+            initialLimit={startOptions.limit}
             onExit={exitImmersive}
             onChange={refresh}
             notify={notify}
           />
         );
       case "notebook":
-        return <NotebookPage onStart={() => enterImmersive()} onRefresh={refresh} />;
+        return <NotebookPage onStart={() => openStartDialog()} onRefresh={refresh} />;
       case "stats":
         return <StatsPage stats={stats} books={books} />;
       case "settings":
@@ -158,7 +179,7 @@ export default function App() {
       default:
         return null;
     }
-  }, [page, stats, books, refresh, notify, enterImmersive, exitImmersive]);
+  }, [page, stats, books, refresh, notify, openStartDialog, startOptions, exitImmersive]);
 
   return (
     <div className={`app ${immersive ? "app--immersive" : ""}`}>
@@ -180,7 +201,7 @@ export default function App() {
                 className={`nav-item ${page === item.id ? "nav-item--active" : ""}`}
                 onClick={() => {
                   if (item.id === "practice") {
-                    enterImmersive();
+                    openStartDialog();
                   } else {
                     setPage(item.id);
                   }
@@ -244,7 +265,7 @@ export default function App() {
             </div>
             <div className="topbar__spacer" />
             {stats.dueCount > 0 && page !== "practice" && (
-              <button type="button" className="chip chip--warning" onClick={() => enterImmersive()}>
+              <button type="button" className="chip chip--warning" onClick={() => openStartDialog()}>
                 待复习 {stats.dueCount}
               </button>
             )}
@@ -255,6 +276,16 @@ export default function App() {
           {content}
         </div>
       </main>
+
+      {startDialogOpen && (
+        <StartDialog
+          books={books}
+          defaultMode={startOptions.mode}
+          defaultScope={startOptions.scope}
+          onCancel={() => setStartDialogOpen(false)}
+          onStart={startSession}
+        />
+      )}
 
       {toast && <div className="toast">{toast}</div>}
     </div>

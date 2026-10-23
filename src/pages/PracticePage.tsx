@@ -91,10 +91,14 @@ interface QueueItem {
 
 interface PracticePageProps {
   books: BookWithStats[];
+  /** The book chosen in the start dialog. Empty means every book. */
+  initialBookId?: string;
   /** The mode chosen on the home page. */
   initialMode?: StudyMode;
   /** The scope chosen on the home page. */
   initialScope?: StudyScope;
+  /** How many words this session should contain. */
+  initialLimit?: number;
   onExit: () => void;
   onChange: () => void;
   notify: (message: string) => void;
@@ -103,15 +107,18 @@ interface PracticePageProps {
 /** The practice page: one word at a time, graded with FSRS. */
 export default function PracticePage({
   books,
+  initialBookId = "",
   initialMode = "spelling",
   initialScope = "mix",
+  initialLimit = 20,
   onExit,
   onChange,
   notify,
 }: PracticePageProps) {
   const [mode, setMode] = useState<StudyMode>(initialMode);
   const [scope, setScope] = useState<StudyScope>(initialScope);
-  const [bookId, setBookId] = useState<string>("");
+  const [bookId, setBookId] = useState<string>(initialBookId);
+  const [sessionSize, setSessionSize] = useState(initialLimit);
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [index, setIndex] = useState(0);
   const [typed, setTyped] = useState("");
@@ -147,9 +154,9 @@ export default function PracticePage({
 
   /** Load a fresh session from the backend. */
   const load = useCallback(
-    async (nextBook: string, nextScope: StudyScope) => {
+    async (nextBook: string, nextScope: StudyScope, size: number) => {
       setLoading(true);
-      const items = await buildSession(nextBook, nextScope, 20);
+      const items = await buildSession(nextBook, nextScope, size);
       const cards = await fetchCards();
 
       const mapped: QueueItem[] = items.map((item) => {
@@ -249,7 +256,7 @@ export default function PracticePage({
   }, []);
 
   useEffect(() => {
-    void load(bookId, scope);
+    void load(bookId, scope, sessionSize);
   }, [load, bookId, scope]);
 
   // Focus the answer field whenever a new question appears.
@@ -528,7 +535,7 @@ export default function PracticePage({
         <div className="empty__title">这一轮完成了</div>
         <p style={{ margin: 0 }}>休息一下，或者再来一轮。</p>
         <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-          <button type="button" className="button button--primary" onClick={() => void load(bookId, scope)}>
+          <button type="button" className="button button--primary" onClick={() => void load(bookId, scope, sessionSize)}>
             再来一轮
           </button>
           <button type="button" className="button" onClick={onExit}>
@@ -585,6 +592,19 @@ export default function PracticePage({
           <option value="spelling">拼写</option>
           <option value="choice">词义选择</option>
           <option value="dictation">听写</option>
+        </select>
+        <select
+          className="input"
+          value={sessionSize}
+          onChange={(event) => setSessionSize(Number(event.target.value))}
+          aria-label="本轮数量"
+          title="改数量后会重新开始一轮"
+        >
+          {[10, 20, 30, 50].map((size) => (
+            <option key={size} value={size}>
+              {size} 词
+            </option>
+          ))}
         </select>
         <span className="chip chip--outline">
           {index + 1} / {queue.length}

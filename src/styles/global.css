@@ -428,6 +428,234 @@ input {
   font-weight: 600;
 }
 
+/* ---------------------------------------------------------------- dialog */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 20, 22, 0.42);
+  display: grid;
+  place-items: center;
+  z-index: 200;
+  padding: 24px;
+  animation: fade-in var(--duration-fast) var(--ease);
+}
+
+.modal {
+  width: 100%;
+  max-width: 620px;
+  max-height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  animation: rise var(--duration-normal) var(--ease);
+}
+
+.start-dialog__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 24px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.start-dialog__title {
+  font-size: 17px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.start-dialog__subtitle {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 3px 0 0;
+}
+
+.start-dialog__close {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 14px;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  transition: background var(--duration-fast) var(--ease);
+}
+
+.start-dialog__close:hover {
+  background: var(--surface-alt);
+}
+
+.start-dialog__body {
+  padding: 18px 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.start-dialog__section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.start-dialog__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.start-dialog__label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  margin: 0;
+  text-transform: uppercase;
+}
+
+/* The wordbook list. Two columns keep ten books scannable. */
+.book-picker {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  max-height: 216px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.book-picker__item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 8px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  text-align: left;
+  transition: border-color var(--duration-fast) var(--ease),
+    background var(--duration-fast) var(--ease);
+}
+
+.book-picker__item:hover {
+  border-color: var(--gray-300);
+}
+
+.book-picker__item--active {
+  border-color: var(--blue);
+  background: var(--blue-soft);
+}
+
+.book-picker__name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.book-picker__meta {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Segmented control, used for the mode and scope. */
+.segmented {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--surface-alt);
+  border-radius: var(--radius);
+}
+
+.segmented__item {
+  flex: 1;
+  padding: 6px 8px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+  transition: background var(--duration-fast) var(--ease), color var(--duration-fast) var(--ease);
+}
+
+.segmented__item:hover {
+  color: var(--text-primary);
+}
+
+.segmented__item--active {
+  background: var(--black);
+  color: var(--white);
+  font-weight: 500;
+}
+
+/* The word-count buttons. */
+.size-picker {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.size-picker__item {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 2px;
+  padding: 9px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-size: 17px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  transition: border-color var(--duration-fast) var(--ease),
+    background var(--duration-fast) var(--ease);
+}
+
+.size-picker__item:hover {
+  border-color: var(--gray-300);
+}
+
+.size-picker__item--active {
+  border-color: var(--blue);
+  background: var(--blue-soft);
+  color: var(--blue);
+}
+
+.size-picker__unit {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+.size-picker__item--active .size-picker__unit {
+  color: var(--blue);
+}
+
+.start-dialog__summary {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 0;
+  padding: 9px 12px;
+  background: var(--surface-alt);
+  border-radius: var(--radius-sm);
+}
+
+.start-dialog__foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 24px;
+  border-top: 1px solid var(--border);
+}
+
 /* --------------------------------------------------------------- buttons */
 
 .button {
