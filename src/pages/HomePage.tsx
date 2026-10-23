@@ -1,15 +1,41 @@
-﻿import { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import type { BookWithStats } from "../lib/api";
 import type { DashboardStats, StudyMode, StudyScope } from "../lib/types";
 import { weekDayLabels } from "../lib/week";
 
-/** A short line of encouragement shown under the plan. */
-const NOTES = [
-  "先复习，再学新词。",
-  "把词根记牢，生词会少一半。",
-  "慢一点没关系，别断就行。",
-  "今天记住的，就是明天的底气。",
+/**
+ * The quote on the plan card.
+ *
+ * Each entry pairs an English line with its own Chinese rendering, so the
+ * two always match. A rotating Chinese line under a fixed English one read
+ * as a mistranslation.
+ */
+const QUOTES: Array<{ en: string; zh: string }> = [
+  {
+    en: "What you learn today is tomorrow's footing.",
+    zh: "今天记住的，就是明天的底气。",
+  },
+  {
+    en: "Review first, then learn something new.",
+    zh: "先复习，再学新词。",
+  },
+  {
+    en: "Know the roots and half the words come free.",
+    zh: "把词根记牢，生词会少一半。",
+  },
+  {
+    en: "Slow is fine. Just do not stop.",
+    zh: "慢一点没关系，别断就行。",
+  },
+  {
+    en: "Memory is the scribe of the soul.",
+    zh: "记忆，是灵魂的书记官。",
+  },
+  {
+    en: "We are what we repeatedly do.",
+    zh: "我们反复做的事，塑造了我们。",
+  },
 ];
 
 interface HomePageProps {
@@ -37,7 +63,7 @@ export default function HomePage({ stats, books, onStart }: HomePageProps) {
   const [mode, setMode] = useState<StudyMode>("spelling");
   const [scope, setScope] = useState<StudyScope>("mix");
 
-  const note = useMemo(() => NOTES[new Date().getDate() % NOTES.length], []);
+  const quote = useMemo(() => QUOTES[new Date().getDate() % QUOTES.length], []);
 
   const week = stats.weekly.length === 7 ? stats.weekly : [0, 0, 0, 0, 0, 0, 0];
   const weekMax = Math.max(1, ...week);
@@ -56,8 +82,8 @@ export default function HomePage({ stats, books, onStart }: HomePageProps) {
       <section className="card plan">
         <div className="plan__main">
           <div className="plan__eyebrow">TODAY&apos;S PLAN</div>
-          <p className="plan__quote">I think, therefore I am.</p>
-          <p className="plan__quote-zh">{note}</p>
+          <p className="plan__quote">{quote.en}</p>
+          <p className="plan__quote-zh">{quote.zh}</p>
 
           <div className="plan__actions">
             <button

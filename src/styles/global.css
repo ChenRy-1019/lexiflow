@@ -1,4 +1,4 @@
-﻿/*
+/*
  * LexiFlow design tokens — minimalist palette.
  *
  * Only two colors: black for content, blue for interaction.
@@ -312,11 +312,12 @@ input {
 }
 
 .plan__quote {
-  font-size: 30px;
+  font-size: clamp(20px, 2.1vw, 27px);
   font-weight: 500;
   color: var(--text-primary);
   margin: 12px 0 4px;
   letter-spacing: -0.02em;
+  line-height: 1.28;
 }
 
 .plan__quote-zh {
