@@ -7,6 +7,9 @@ src-tauri/gen/
 data/_upstream/
 data/lexicon.json
 
+# Build output for distribution.
+release/
+
 *.log
 .DS_Store
 .idea/

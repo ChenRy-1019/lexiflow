@@ -11,6 +11,7 @@
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
+    "package": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package.ps1 -OutDir release",
     "lexicon:build": "tsx scripts/build-lexicon.ts",
     "typecheck": "tsc --noEmit",
     "audit:css": "node scripts/audit-classes.mjs",

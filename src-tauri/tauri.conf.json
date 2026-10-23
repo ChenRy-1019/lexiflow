@@ -32,12 +32,21 @@
     "active": true,
     "targets": ["nsis"],
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/icon.ico"],
+    "shortDescription": "本地优先的英语词汇学习工具",
+    "longDescription": "用 FSRS 间隔重复安排复习的英语背单词应用。学习记录保存在本机，音频首次播放后离线可用。",
     "resources": {
       "../data/lexicon.json": "lexicon.json"
     },
     "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper",
+        "silent": true
+      },
       "nsis": {
-        "installMode": "currentUser"
+        "installMode": "currentUser",
+        "languages": ["SimpChinese", "English"],
+        "displayLanguageSelector": true,
+        "startMenuFolder": "LexiFlow"
       }
     }
   }

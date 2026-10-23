@@ -130,6 +130,55 @@ npm run tauri:build
 
 产物在 `src-tauri/target/release/bundle/nsis/`。
 
+### 发给别人用
+
+打一个可以直接发给朋友的压缩包：
+
+```bash
+npm run package
+```
+
+生成 `release/LexiFlow-<版本>.zip`（约 3 MB），里面是安装包和一份中文安装说明。
+对方解压后双击 `LexiFlow_0.1.0_x64-setup.exe` 安装即可。
+
+安装包会自动检查 **WebView2** 运行时：Windows 11 自带，Windows 10 若缺失会
+自动下载安装（需要联网）。这一步写在 NSIS 脚本里，用户不会看到失败的窗口。
+
+首次运行时 Windows SmartScreen 可能提示「Windows 已保护你的电脑」——这是因为
+安装包没有购买代码签名证书，点「更多信息 → 仍要运行」即可。
+
+## 让人用上并且能更新
+
+分三件事，从简到难：
+
+**1. 直接发安装包（现在就能做）**
+
+跑 `npm run package`，把 zip 发过去。缺点是每次更新都要手动重发。
+
+**2. 放到 GitHub Releases（推荐）**
+
+免费，且是 Tauri 内置更新器的标准来源：
+
+1. 建一个仓库，把代码推上去（记得 `.gitignore` 已排除词库和大文件）。
+2. 生成一个签名密钥，它用来证明更新包确实来自你：
+   ```bash
+   npx tauri signer generate
+   ```
+   公钥填进 `tauri.conf.json` 的 `bundle.createUpdaterArtifacts` 与
+   `plugins.updater.pubkey`，私钥和密码留在本机，**不要提交**。
+3. 设置 `plugins.updater.endpoints` 指向发布地址，例如
+   `https://github.com/<你>/<仓库>/releases/latest/download/latest.json`。
+4. 打 tag 并上传安装包与 `latest.json`，用户端就会收到更新提示。
+
+**3. 应用内自动更新**
+
+需要 `@tauri-apps/plugin-updater`：启动时检查、提示、下载、重启替换。
+这一步依赖上一步的签名和 Release，建议先把分发包确认稳定再做。
+
+当前的安装包**还没有**自动更新能力，也没有签名——它是「手动发、手动更新」
+的版本。需要我把更新器接上时告诉我，我按上面第 2、3 步做。
+
+
 ## 项目结构
 
 ```
