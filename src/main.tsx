@@ -9,6 +9,7 @@ if (!container) {
   throw new Error("missing #root element");
 }
 
+
 createRoot(container).render(
   <StrictMode>
     <App />

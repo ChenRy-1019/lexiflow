@@ -182,16 +182,26 @@ export default function PracticePage({
       setGraded(null);
       setStartedAt(Date.now());
       setLoading(false);
+      
+      // Pre-warm the audio cache for the first word so it's ready when the
+      // auto-speak fires 350ms later.
+      if (mapped[0] && autoSpeak) {
+        void speak(mapped[0].word, accent);
+      }
     },
-    [],
+    [autoSpeak, accent],
   );
 
   /** Speak the current word. */
   const pronounceCurrent = useCallback(
     async (text?: string) => {
       const word = text ?? current?.word;
-      if (!word || speaking) return;
+      if (!word) return;
+      
+      // Stop any ongoing audio before starting new one
+      stopSpeaking();
       setSpeaking(true);
+      
       try {
         const outcome = await speak(word, accent);
         if (outcome === "failed") {
@@ -201,7 +211,7 @@ export default function PracticePage({
         setSpeaking(false);
       }
     },
-    [current, accent, speaking, notify],
+    [current, accent, notify],
   );
 
   // The system voice list is only available after the web view has loaded it.
@@ -222,6 +232,10 @@ export default function PracticePage({
   // Speak the word once when it first appears, then only on manual trigger.
   useEffect(() => {
     if (!current || loading) return;
+    
+    // Stop any previous audio immediately
+    stopSpeaking();
+    setSpeaking(false);
     
     // Speak once after a short delay
     if (autoSpeak) {

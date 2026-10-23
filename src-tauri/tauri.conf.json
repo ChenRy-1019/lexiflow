@@ -13,10 +13,10 @@
     "windows": [
       {
         "title": "LexiFlow · 词汇流",
-        "width": 1280,
-        "height": 760,
-        "minWidth": 900,
-        "minHeight": 600,
+        "width": 1180,
+        "height": 660,
+        "minWidth": 860,
+        "minHeight": 560,
         "resizable": true,
         "decorations": false,
         "transparent": false,

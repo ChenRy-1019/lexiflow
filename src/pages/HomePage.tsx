@@ -4,13 +4,7 @@ import type { BookWithStats } from "../lib/api";
 import type { DashboardStats, StudyMode, StudyScope } from "../lib/types";
 import { weekDayLabels } from "../lib/week";
 
-/**
- * The quote on the plan card.
- *
- * Each entry pairs an English line with its own Chinese rendering, so the
- * two always match. A rotating Chinese line under a fixed English one read
- * as a mistranslation.
- */
+/** A short line of encouragement shown under the plan. */
 const QUOTES: Array<{ en: string; zh: string }> = [
   {
     en: "What you learn today is tomorrow's footing.",
@@ -38,13 +32,6 @@ const QUOTES: Array<{ en: string; zh: string }> = [
   },
 ];
 
-interface HomePageProps {
-  stats: DashboardStats;
-  books: BookWithStats[];
-  onStart: (mode: StudyMode, scope: StudyScope) => void;
-  onRefresh: () => void;
-}
-
 /** The three practice modes offered on the plan card. */
 const MODES: Array<{ id: StudyMode; label: string }> = [
   { id: "spelling", label: "拼写" },
@@ -57,6 +44,13 @@ const SCOPES: Array<{ id: StudyScope; label: string }> = [
   { id: "new", label: "只学新词" },
   { id: "review", label: "只复习" },
 ];
+
+interface HomePageProps {
+  stats: DashboardStats;
+  books: BookWithStats[];
+  onStart: (mode: StudyMode, scope: StudyScope) => void;
+  onRefresh: () => void;
+}
 
 /** The learner's home page: today's plan, progress and the weekly chart. */
 export default function HomePage({ stats, books, onStart }: HomePageProps) {

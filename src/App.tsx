@@ -215,6 +215,38 @@ export default function App() {
             ))}
           </nav>
 
+          {/* Today's note card */}
+          <div className="sidebar__note">
+            <div className="sidebar__note-label">Today&apos;s Note</div>
+            <div className="sidebar__note-en">The unexamined life is not worth living.</div>
+            <div className="sidebar__note-zh">未经省察的人生，不值得过。</div>
+          </div>
+
+          {/* Circular progress ring */}
+          <div className="sidebar__progress">
+            <svg className="progress-ring" viewBox="0 0 48 48">
+              <circle className="progress-ring__track" cx="24" cy="24" r="20" />
+              <circle
+                className="progress-ring__fill"
+                cx="24"
+                cy="24"
+                r="20"
+                strokeDasharray={`${2 * Math.PI * 20}`}
+                strokeDashoffset={`${2 * Math.PI * 20 - (stats.todayNew / 20) * 2 * Math.PI * 20}`}
+              />
+              <text className="progress-ring__text" x="24" y="24">
+                {stats.todayNew}
+              </text>
+            </svg>
+            <div className="progress-info">
+              <div className="progress-info__label">今日新词</div>
+              <div className="progress-info__sub">
+                {stats.todayNew} / 20 词
+              </div>
+              <div className="progress-info__foot">A LITTLE EVERY DAY</div>
+            </div>
+          </div>
+
           <div className="sidebar__footer">
             <button
               type="button"

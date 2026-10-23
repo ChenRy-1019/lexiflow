@@ -120,6 +120,7 @@ export function playRecording(base64: string, rate = 1): Promise<void> {
 export function stopSpeaking(): void {
   if (player) {
     player.pause();
+    player.src = "";
   }
   if (currentUrl) {
     URL.revokeObjectURL(currentUrl);
