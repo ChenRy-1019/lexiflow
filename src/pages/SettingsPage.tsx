@@ -18,10 +18,17 @@ interface SettingsPageProps {
   notify: (message: string) => void;
   /** Check the release server and show the result in a dialog. */
   onCheckUpdate?: () => void;
+  /** Report a new daily goal so the home page and the ring follow. */
+  onGoalChange?: (goal: number) => void;
 }
 
 /** The preferences page: data location, backup and resets. */
-export default function SettingsPage({ onReset, notify, onCheckUpdate }: SettingsPageProps) {
+export default function SettingsPage({
+  onReset,
+  notify,
+  onCheckUpdate,
+  onGoalChange,
+}: SettingsPageProps) {
   const [dbPath, setDbPath] = useState("");
   const [lexiconTotal, setLexiconTotal] = useState(0);
   const [dailyGoal, setDailyGoal] = useState("20");
@@ -95,11 +102,31 @@ export default function SettingsPage({ onReset, notify, onCheckUpdate }: Setting
               <input
                 className="input"
                 type="number"
-                min={5}
+                min={1}
                 max={200}
                 value={dailyGoal}
-                onChange={(event) => setDailyGoal(event.target.value)}
-                onBlur={() => void persist("dailyGoal", dailyGoal)}
+                onChange={(event) => {
+                  const raw = event.target.value;
+                  setDailyGoal(raw);
+                  // Persist on every valid change and tell the parent, so the
+                  // home page and the sidebar ring follow immediately. Saving
+                  // only on blur left the ring showing the old denominator.
+                  const parsed = Number(raw);
+                  if (Number.isInteger(parsed) && parsed >= 1 && parsed <= 200) {
+                    void saveSetting("dailyGoal", String(parsed));
+                    onGoalChange?.(parsed);
+                  }
+                }}
+                onBlur={() => {
+                  // Restore a sensible value if the field was left empty or
+                  // with something out of range.
+                  const parsed = Number(dailyGoal);
+                  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 200) {
+                    setDailyGoal("20");
+                    void saveSetting("dailyGoal", "20");
+                    onGoalChange?.(20);
+                  }
+                }}
               />
             </label>
 

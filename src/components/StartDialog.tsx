@@ -4,6 +4,10 @@ import type { BookWithStats } from "../lib/api";
 import { fetchSetting, saveSetting } from "../lib/api";
 import type { StudyMode, StudyScope } from "../lib/types";
 
+/** The bounds a custom session size must fall within. */
+const MIN_SIZE = 1;
+const MAX_SIZE = 200;
+
 /** The three practice modes. */
 const MODES: Array<{ id: StudyMode; label: string; hint: string }> = [
   { id: "spelling", label: "拼写", hint: "看释义写英文" },
@@ -18,8 +22,17 @@ const SCOPES: Array<{ id: StudyScope; label: string }> = [
   { id: "review", label: "只复习" },
 ];
 
-/** How many words a session can contain. */
-const SIZES = [10, 20, 30, 50];
+/**
+ * The quick-pick sizes shown in the dialog.
+ *
+ * The learner's daily goal is always offered first, because a session is
+ * normally one day's work; the others are convenient round numbers around
+ * it. Values are deduplicated and kept in ascending order.
+ */
+function sizeOptions(goal: number): number[] {
+  const around = [goal, Math.max(5, Math.round(goal / 2)), goal * 2, goal * 3];
+  return [...new Set(around.map((size) => Math.round(size)))].sort((a, b) => a - b);
+}
 
 /** What the learner settled on. */
 export interface StartChoice {
@@ -31,6 +44,8 @@ export interface StartChoice {
 
 interface StartDialogProps {
   books: BookWithStats[];
+  /** The learner's daily goal, offered as the first quick-pick size. */
+  dailyGoal?: number;
   /** The mode pre-selected when the dialog opens. */
   defaultMode: StudyMode;
   /** The scope pre-selected when the dialog opens. */
@@ -49,6 +64,7 @@ interface StartDialogProps {
  */
 export default function StartDialog({
   books,
+  dailyGoal = 20,
   defaultMode,
   defaultScope,
   onCancel,
@@ -57,8 +73,12 @@ export default function StartDialog({
   const [bookId, setBookId] = useState("");
   const [mode, setMode] = useState<StudyMode>(defaultMode);
   const [scope, setScope] = useState<StudyScope>(defaultScope);
-  const [limit, setLimit] = useState(20);
+  const [limit, setLimit] = useState(dailyGoal);
+  const [custom, setCustom] = useState(false);
+  const [customValue, setCustomValue] = useState(String(dailyGoal));
   const [ready, setReady] = useState(false);
+
+  const quickSizes = sizeOptions(dailyGoal);
 
   // Load the previous choice, so the dialog opens where it was left.
   useEffect(() => {
@@ -78,8 +98,9 @@ export default function StartDialog({
         setScope(savedScope);
       }
       const parsed = Number(savedLimit);
-      if (SIZES.includes(parsed)) {
+      if (Number.isInteger(parsed) && parsed >= MIN_SIZE && parsed <= MAX_SIZE) {
         setLimit(parsed);
+        setCustomValue(String(parsed));
       }
       setReady(true);
     });
@@ -201,18 +222,64 @@ export default function StartDialog({
           <section className="start-dialog__section">
             <h3 className="start-dialog__label">本次数量</h3>
             <div className="size-picker">
-              {SIZES.map((size) => (
+              {quickSizes.map((size) => (
                 <button
                   key={size}
                   type="button"
-                  className={`size-picker__item ${limit === size ? "size-picker__item--active" : ""}`}
-                  onClick={() => setLimit(size)}
+                  className={`size-picker__item ${!custom && limit === size ? "size-picker__item--active" : ""}`}
+                  onClick={() => {
+                    setCustom(false);
+                    setLimit(size);
+                  }}
                 >
                   {size}
                   <span className="size-picker__unit">词</span>
+                  {size === dailyGoal && <span className="size-picker__hint">目标</span>}
                 </button>
               ))}
+              <button
+                type="button"
+                className={`size-picker__item ${custom ? "size-picker__item--active" : ""}`}
+                onClick={() => {
+                  setCustom(true);
+                  setCustomValue(String(limit));
+                }}
+              >
+                自定义
+              </button>
             </div>
+
+            {custom && (
+              <div className="size-custom">
+                <input
+                  className="input"
+                  type="number"
+                  min={MIN_SIZE}
+                  max={MAX_SIZE}
+                  value={customValue}
+                  autoFocus
+                  onChange={(event) => {
+                    setCustomValue(event.target.value);
+                    const parsed = Number(event.target.value);
+                    if (Number.isInteger(parsed) && parsed >= MIN_SIZE && parsed <= MAX_SIZE) {
+                      setLimit(parsed);
+                    }
+                  }}
+                  onBlur={() => {
+                    // Keep the field and the chosen size in step.
+                    const parsed = Number(customValue);
+                    if (!Number.isInteger(parsed) || parsed < MIN_SIZE || parsed > MAX_SIZE) {
+                      setCustomValue(String(limit));
+                    } else {
+                      setLimit(parsed);
+                    }
+                  }}
+                  aria-label="自定义数量"
+                />
+                <span className="size-custom__unit">词</span>
+                <span className="size-custom__range">1 – 200</span>
+              </div>
+            )}
           </section>
 
           <p className="start-dialog__summary">

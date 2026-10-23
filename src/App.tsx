@@ -4,6 +4,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 
 import { fetchBooks, fetchStats, isTauri, loadSession, type BookWithStats } from "./lib/api";
 import { autoCheckEnabled, checkForUpdate, type UpdateStatus } from "./lib/updater";
+import { DEFAULT_DAILY_GOAL, goalProgress, loadDailyGoal } from "./lib/goal";
 import type { DashboardStats, StudyMode, StudyScope } from "./lib/types";
 import TitleBar from "./components/TitleBar";
 import StartDialog, { type StartChoice } from "./components/StartDialog";
@@ -51,6 +52,8 @@ export default function App() {
   const [stats, setStats] = useState<DashboardStats>(EMPTY_STATS);
   const [books, setBooks] = useState<BookWithStats[]>([]);
   const [toast, setToast] = useState<string | null>(null);
+  /** The learner's daily goal, shown by the home page and the ring. */
+  const [dailyGoal, setDailyGoal] = useState(DEFAULT_DAILY_GOAL);
   /** The mode and scope chosen on the home page, handed to the practice page. */
   const [startOptions, setStartOptions] = useState<{
     bookId: string;
@@ -70,14 +73,16 @@ export default function App() {
 
   /** Refresh the counters shown in the sidebar and on the home page. */
   const refresh = useCallback(async () => {
-    const [nextStats, nextBooks, saved] = await Promise.all([
+    const [nextStats, nextBooks, saved, goal] = await Promise.all([
       fetchStats(),
       fetchBooks(),
       loadSession(),
+      loadDailyGoal(),
     ]);
     setStats(nextStats);
     setBooks(nextBooks);
     setPendingRemaining(saved ? Math.max(0, saved.ids.length - saved.answered) : 0);
+    setDailyGoal(goal);
   }, []);
 
   useEffect(() => {
@@ -206,6 +211,7 @@ export default function App() {
               setPage("practice");
             }}
             pendingRemaining={pendingRemaining}
+            dailyGoal={dailyGoal}
 />
         );
       case "library":
@@ -234,12 +240,15 @@ export default function App() {
             onReset={refresh}
             notify={notify}
             onCheckUpdate={() => void runUpdateCheck(true)}
+            onGoalChange={(goal) => {
+              setDailyGoal(goal);
+            }}
           />
         );
       default:
         return null;
     }
-  }, [page, stats, books, refresh, notify, openStartDialog, startOptions, exitImmersive]);
+  }, [page, stats, books, refresh, notify, openStartDialog, startOptions, exitImmersive, dailyGoal]);
 
   return (
     <div className={`app ${immersive ? "app--immersive" : ""}`}>
@@ -292,7 +301,7 @@ export default function App() {
                 cy="24"
                 r="20"
                 strokeDasharray={`${2 * Math.PI * 20}`}
-                strokeDashoffset={`${2 * Math.PI * 20 - (stats.todayNew / 20) * 2 * Math.PI * 20}`}
+                strokeDashoffset={`${2 * Math.PI * 20 - goalProgress(stats.todayNew, dailyGoal) * 2 * Math.PI * 20}`}
               />
               <text className="progress-ring__text" x="24" y="24">
                 {stats.todayNew}
@@ -301,7 +310,7 @@ export default function App() {
             <div className="progress-info">
               <div className="progress-info__label">今日新词</div>
               <div className="progress-info__sub">
-                {stats.todayNew} / 20 词
+                {stats.todayNew} / {dailyGoal} 词
               </div>
               <div className="progress-info__foot">A LITTLE EVERY DAY</div>
             </div>

@@ -1,0 +1,13 @@
+Make the daily goal drive the plan and the session size
+
+The daily goal was saved but never read: the home page and the sidebar
+ring both used a hard-coded 20, so changing it to 25 updated neither. The
+value is now read alongside the counters, passed to both views, and reported
+immediately when the settings field changes rather than only on blur.
+
+The start dialog's word-count options were a fixed 10 / 20 / 30 / 50, which
+meant a goal of 25 could not be picked at all. The options now derive from
+ the goal (the goal itself, half, double and triple), the goal is marked,
+and the fixed 10 is replaced by a free-form custom entry.
+
+Also clamps the goal to 1-200, matching what the field accepts.

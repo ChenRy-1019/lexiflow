@@ -53,6 +53,8 @@ interface HomePageProps {
   onContinue?: () => void;
   /** How many words remain in the unfinished session. */
   pendingRemaining?: number;
+  /** The learner's daily goal, used for the progress readout. */
+  dailyGoal?: number;
 }
 
 /** The learner's home page: today's plan, progress and the weekly chart. */
@@ -62,6 +64,7 @@ export default function HomePage({
   onStart,
   onContinue,
   pendingRemaining = 0,
+  dailyGoal = 20,
 }: HomePageProps) {
   const [mode, setMode] = useState<StudyMode>("spelling");
   const [scope, setScope] = useState<StudyScope>("mix");
@@ -73,8 +76,8 @@ export default function HomePage({
   const weekDays = useMemo(() => weekDayLabels(), []);
 
   const totalWords = books.reduce((sum, book) => sum + book.total, 0);
-  const goal = 20;
-  const goalProgress = Math.min(1, stats.todayNew / goal);
+  const goal = dailyGoal;
+  const progress = Math.min(1, goal > 0 ? stats.todayNew / goal : 0);
 
   const hours = Math.floor(stats.studySeconds / 3600);
   const minutes = Math.floor((stats.studySeconds % 3600) / 60);
@@ -143,7 +146,7 @@ export default function HomePage({
             <span className="plan__count-unit">词</span>
           </div>
           <div className="meter">
-            <div className="meter__fill" style={{ width: `${goalProgress * 100}%` }} />
+            <div className="meter__fill" style={{ width: `${progress * 100}%` }} />
           </div>
           <div className="plan__count-foot">
             {stats.todayNew} / {goal}
