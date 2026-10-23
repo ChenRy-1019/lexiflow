@@ -1,0 +1,14 @@
+Pin the practice toolbar and add a way to resume a session
+
+The toolbar sat inside the scrolling area, so it scrolled out of reach on a
+maximised window. The practice page is now a column: a pinned toolbar, then
+a scrolling body that centres the question when it fits.
+
+Leaving practice discarded the queue and the position, so there was no way
+back to the words that had not been answered. The session is now saved on
+every answer, and the home page offers continue with the number of words
+left. Continuing restores the queue, the word and the settings. A finished
+round clears the saved session so the button does not linger.
+
+Four Rust tests cover the round trip, and the button was verified against a
+seeded session showing 15 remaining out of 20.

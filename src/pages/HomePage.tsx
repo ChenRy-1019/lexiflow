@@ -49,11 +49,20 @@ interface HomePageProps {
   stats: DashboardStats;
   books: BookWithStats[];
   onStart: (mode: StudyMode, scope: StudyScope) => void;
-  onRefresh: () => void;
+  /** Resume the unfinished session, when there is one. */
+  onContinue?: () => void;
+  /** How many words remain in the unfinished session. */
+  pendingRemaining?: number;
 }
 
 /** The learner's home page: today's plan, progress and the weekly chart. */
-export default function HomePage({ stats, books, onStart }: HomePageProps) {
+export default function HomePage({
+  stats,
+  books,
+  onStart,
+  onContinue,
+  pendingRemaining = 0,
+}: HomePageProps) {
   const [mode, setMode] = useState<StudyMode>("spelling");
   const [scope, setScope] = useState<StudyScope>("mix");
 
@@ -87,6 +96,16 @@ export default function HomePage({ stats, books, onStart }: HomePageProps) {
             >
               开始学习
             </button>
+            {onContinue && pendingRemaining > 0 && (
+              <button
+                type="button"
+                className="button button--large button--continue"
+                onClick={onContinue}
+              >
+                继续学习
+                <span className="button__badge">{pendingRemaining}</span>
+              </button>
+            )}
             <div className="plan__modes">
               {MODES.map((item) => (
                 <button

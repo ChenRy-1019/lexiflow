@@ -563,6 +563,34 @@ select {
   font-size: 15px;
 }
 
+/* The resume button carries the number of words left, so the learner knows
+   how much of the round is still outstanding. */
+.button--continue {
+  border-color: var(--blue);
+  color: var(--blue);
+  gap: 8px;
+}
+
+.button--continue:hover:not(:disabled) {
+  background: var(--blue-soft);
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+.button__badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--radius-full);
+  background: var(--blue);
+  color: var(--white);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ------------------------------------------------------------------ chips */
 
 .chip {
@@ -1173,10 +1201,15 @@ select {
   align-items: center;
   flex-wrap: wrap;
   justify-content: center;
+  width: 100%;
   max-width: 100%;
   padding: 14px 16px;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
+  /* Pinned: the question below scrolls underneath it. */
+  position: sticky;
+  top: 0;
+  z-index: 5;
   flex-shrink: 0;
 }
 
@@ -1215,15 +1248,40 @@ select {
   border-color: #cfdbe6;
 }
 
+/*
+ * The practice page is a column: a pinned toolbar, then a scrolling body.
+ *
+ * The body is the only part that scrolls, so the controls above the question
+ * stay reachable however tall the window is.
+ */
 .practice {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
   flex: 1;
-  min-height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.practice__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   padding: 32px 24px 44px;
   gap: 22px;
+}
+
+/* A scrolling body centres its question when it fits, and starts at the top
+   when it does not, so nothing is clipped out of reach. */
+.practice__body > * {
+  flex-shrink: 0;
+}
+
+.practice__spacer {
+  flex: 1 1 auto;
+  min-height: 8px;
 }
 
 .practice__stage {

@@ -7,6 +7,8 @@
 
 use std::collections::HashMap;
 
+use serde::{Deserialize, Serialize};
+
 use crate::db::Card;
 
 /// Which slice of the vocabulary a session draws from.
@@ -37,6 +39,47 @@ pub struct SessionItem {
     pub entry_id: String,
     /// Whether the word was already scheduled for review.
     pub is_review: bool,
+}
+
+/// An unfinished session, remembered so the learner can return to it.
+///
+/// Leaving practice used to drop the queue and the position, so coming back
+/// always started a fresh session. Keeping the queue here lets the home page
+/// offer "continue" and resume at the exact word.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PendingSession {
+    /// The entry ids still to answer, in order.
+    pub ids: Vec<String>,
+    /// How many words have already been answered.
+    pub answered: usize,
+    /// The wordbook the session was built from, empty for every book.
+    pub book_id: String,
+    /// `mix`, `new` or `review`.
+    pub scope: String,
+    /// The mode the learner was using.
+    pub mode: String,
+    /// How many words the session was asked for.
+    pub limit: usize,
+    /// Epoch milliseconds of the last update.
+    pub updated_at: i64,
+}
+
+impl PendingSession {
+    /// The word that comes next, if any.
+    pub fn current(&self) -> Option<&String> {
+        self.ids.get(self.answered)
+    }
+
+    /// Whether every word has been answered.
+    pub fn finished(&self) -> bool {
+        self.answered >= self.ids.len()
+    }
+
+    /// How many words remain.
+    pub fn remaining(&self) -> usize {
+        self.ids.len().saturating_sub(self.answered)
+    }
 }
 
 /// Choose the entries for the next session.

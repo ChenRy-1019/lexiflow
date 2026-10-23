@@ -10,6 +10,12 @@ import {
   removeFromNotebook,
   saveSetting,
   recordStudyTime,
+  resolveEntries,
+  saveSession,
+  loadSession,
+  clearSession,
+  type PendingSession,
+  type StoredCard,
   type BookWithStats,
   type Choice,
 } from "../lib/api";
@@ -99,6 +105,8 @@ interface PracticePageProps {
   initialScope?: StudyScope;
   /** How many words this session should contain. */
   initialLimit?: number;
+  /** Resume the saved session instead of building a new one. */
+  resume?: boolean;
   onExit: () => void;
   onChange: () => void;
   notify: (message: string) => void;
@@ -111,6 +119,7 @@ export default function PracticePage({
   initialMode = "spelling",
   initialScope = "mix",
   initialLimit = 20,
+  resume = false,
   onExit,
   onChange,
   notify,
@@ -152,6 +161,35 @@ export default function PracticePage({
   const current = queue[index] ?? null;
   const finished = queue.length > 0 && index >= queue.length;
 
+  /** Turn backend entries into the queue the page renders. */
+  const toQueue = useCallback(
+    async (ids: string[], cards: Record<string, StoredCard>): Promise<QueueItem[]> => {
+      const entries = await resolveEntries(ids);
+      const byId = new Map(entries.map((entry) => [entry.id, entry]));
+      return ids.flatMap((id) => {
+        const entry = byId.get(id);
+        if (!entry) return [];
+        const stored = cards[id];
+        return [
+          {
+            entryId: entry.id,
+            word: entry.word,
+            meaning: entry.meaning,
+            pos: entry.pos,
+            phonetic: entry.phonetic,
+            example: entry.example,
+            exampleZh: entry.exampleZh,
+            phrase: entry.phrase,
+            etymology: entry.etymology,
+            isReview: Boolean(stored?.due),
+            priorCard: stored?.card ? (JSON.parse(stored.card) as FsrsCard) : null,
+          },
+        ];
+      });
+    },
+    [],
+  );
+
   /** Load a fresh session from the backend. */
   const load = useCallback(
     async (nextBook: string, nextScope: StudyScope, size: number) => {
@@ -182,14 +220,56 @@ export default function PracticePage({
       setGraded(null);
       setStartedAt(Date.now());
       setLoading(false);
-      
+
+      // Remember this session so it can be resumed from the home page.
+      void saveSession({
+        ids: mapped.map((item) => item.entryId),
+        answered: 0,
+        bookId: nextBook,
+        scope: nextScope,
+        mode,
+        limit: size,
+        updatedAt: Date.now(),
+      });
+
       // Warm the audio cache for the first word so the audible request that
       // follows a moment later is served from memory. This makes no sound.
       if (mapped[0] && autoSpeak) {
         void prefetch(mapped[0].word, accent);
       }
     },
-    [autoSpeak, accent],
+    [autoSpeak, accent, mode],
+  );
+
+  /**
+   * The session was restored from disk.
+   *
+   * `index` is the answered count, and the queue holds only the words that
+   * are still to come, so the page opens on the word the learner left.
+   */
+  const restore = useCallback(
+    async (session: PendingSession) => {
+      setLoading(true);
+      const cards = await fetchCards();
+      const remaining = session.ids.slice(session.answered);
+      const mapped = await toQueue(remaining, cards);
+
+      setBookId(session.bookId);
+      setScope(session.scope);
+      setMode(session.mode);
+      setSessionSize(session.limit);
+      setQueue(mapped);
+      setIndex(0);
+      setTyped("");
+      setGraded(null);
+      setStartedAt(Date.now());
+      setLoading(false);
+
+      if (mapped[0] && autoSpeak) {
+        void prefetch(mapped[0].word, accent);
+      }
+    },
+    [toQueue, autoSpeak, accent],
   );
 
   /**
@@ -283,8 +363,27 @@ export default function PracticePage({
     };
   }, []);
 
+  /**
+   * Open the page on the saved session when the learner asked to continue.
+   *
+   * Otherwise a fresh session is built from the chosen book and scope.
+   */
   useEffect(() => {
-    void load(bookId, scope, sessionSize);
+    if (!resume) {
+      void load(bookId, scope, sessionSize);
+      return;
+    }
+
+    void loadSession().then((saved) => {
+      // Only a session with words still to answer is worth resuming.
+      if (saved && saved.ids.length > saved.answered) {
+        void restore(saved);
+      } else {
+        void load(bookId, scope, sessionSize);
+      }
+    });
+    // Runs once per mount. Changing the book or scope starts a fresh session.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [load, bookId, scope]);
 
   // Focus the answer field whenever a new question appears.
@@ -426,8 +525,19 @@ export default function PracticePage({
       setGraded(null);
       setCopySpelling(false);
       setStartedAt(Date.now());
+
+      // Persist the new position so the session can be resumed later.
+      void saveSession({
+        ids: queue.map((item) => item.entryId),
+        answered: index + 1,
+        bookId,
+        scope,
+        mode,
+        limit: sessionSize,
+        updatedAt: Date.now(),
+      });
     },
-    [current, graded, mode, startedAt, onChange],
+    [current, graded, mode, startedAt, onChange, queue, index, bookId, scope, sessionSize],
   );
 
   /** Move to the next word without grading the current one. */
@@ -436,7 +546,17 @@ export default function PracticePage({
     setTyped("");
     setGraded(null);
     setStartedAt(Date.now());
-  }, []);
+
+    void saveSession({
+      ids: queue.map((item) => item.entryId),
+      answered: index + 1,
+      bookId,
+      scope,
+      mode,
+      limit: sessionSize,
+      updatedAt: Date.now(),
+    });
+  }, [queue, index, bookId, scope, mode, sessionSize]);
 
   /** Toggle the current word in the notebook. */
   const toggleNotebook = useCallback(
@@ -559,20 +679,42 @@ export default function PracticePage({
 
   if (finished) {
     return (
-      <div className="empty">
-        <div className="empty__title">这一轮完成了</div>
-        <p style={{ margin: 0 }}>休息一下，或者再来一轮。</p>
-        <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-          <button type="button" className="button button--primary" onClick={() => void load(bookId, scope, sessionSize)}>
-            再来一轮
-          </button>
-          <button type="button" className="button" onClick={onExit}>
-            返回首页
-          </button>
+      <div className="practice">
+        <div className="practice__body">
+          <div className="practice__spacer" />
+          <div className="empty">
+            <div className="empty__title">这一轮完成了</div>
+            <p style={{ margin: 0 }}>休息一下，或者再来一轮。</p>
+            <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+              <button
+                type="button"
+                className="button button--primary"
+                onClick={() => void load(bookId, scope, sessionSize)}
+              >
+                再来一轮
+              </button>
+              <button type="button" className="button" onClick={onExit}>
+                返回首页
+              </button>
+            </div>
+          </div>
+          <div className="practice__spacer" />
         </div>
       </div>
     );
   }
+
+  /**
+   * Forget the finished session.
+   *
+   * A round with nothing left to answer should not be offered as "continue"
+   * on the home page.
+   */
+  useEffect(() => {
+    if (finished) {
+      void clearSession();
+    }
+  }, [finished]);
 
   if (!current) {
     return (
@@ -680,7 +822,10 @@ export default function PracticePage({
         </button>
       </div>
 
-      {mode === "choice" ? (
+      <div className="practice__body">
+        <div className="practice__spacer" />
+
+        {mode === "choice" ? (
         <div className="practice__stage">
           <p className="practice__word">{current.word}</p>
           <p className="practice__pos">选出正确的释义</p>
@@ -899,6 +1044,8 @@ export default function PracticePage({
           </div>
         </div>
       )}
+        <div className="practice__spacer" />
+      </div>
     </div>
   );
 }

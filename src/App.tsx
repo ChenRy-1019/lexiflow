@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
-import { fetchBooks, fetchStats, isTauri, type BookWithStats } from "./lib/api";
+import { fetchBooks, fetchStats, isTauri, loadSession, type BookWithStats } from "./lib/api";
 import type { DashboardStats, StudyMode, StudyScope } from "./lib/types";
 import TitleBar from "./components/TitleBar";
 import StartDialog, { type StartChoice } from "./components/StartDialog";
@@ -58,12 +58,21 @@ export default function App() {
   }>({ bookId: "", mode: "spelling", scope: "mix", limit: 20 });
   /** Whether the start dialog is open. */
   const [startDialogOpen, setStartDialogOpen] = useState(false);
+  /** How many words remain in the unfinished session, if there is one. */
+  const [pendingRemaining, setPendingRemaining] = useState(0);
+  /** Whether the practice page should resume the saved session. */
+  const [resumeSession, setResumeSession] = useState(false);
 
   /** Refresh the counters shown in the sidebar and on the home page. */
   const refresh = useCallback(async () => {
-    const [nextStats, nextBooks] = await Promise.all([fetchStats(), fetchBooks()]);
+    const [nextStats, nextBooks, saved] = await Promise.all([
+      fetchStats(),
+      fetchBooks(),
+      loadSession(),
+    ]);
     setStats(nextStats);
     setBooks(nextBooks);
+    setPendingRemaining(saved ? Math.max(0, saved.ids.length - saved.answered) : 0);
   }, []);
 
   useEffect(() => {
@@ -136,6 +145,7 @@ export default function App() {
   /** Enter practice with the choice the dialog returned. */
   const startSession = useCallback((choice: StartChoice) => {
     setStartOptions(choice);
+    setResumeSession(false);
     setStartDialogOpen(false);
     setImmersive(true);
     setPage("practice");
@@ -150,10 +160,16 @@ export default function App() {
             books={books}
             onStart={(mode, scope) => {
               setStartOptions((prev) => ({ ...prev, mode, scope }));
+              setResumeSession(false);
               setStartDialogOpen(true);
             }}
-            onRefresh={refresh}
-          />
+            onContinue={() => {
+              setResumeSession(true);
+              setImmersive(true);
+              setPage("practice");
+            }}
+            pendingRemaining={pendingRemaining}
+/>
         );
       case "library":
         return <LibraryPage books={books} onStart={(bookId) => openStartDialog(bookId ?? undefined)} />;
@@ -165,6 +181,7 @@ export default function App() {
             initialMode={startOptions.mode}
             initialScope={startOptions.scope}
             initialLimit={startOptions.limit}
+            resume={resumeSession}
             onExit={exitImmersive}
             onChange={refresh}
             notify={notify}

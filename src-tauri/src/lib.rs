@@ -22,7 +22,7 @@ mod util;
 pub mod testing {
     pub use crate::db::{Card, DashboardStats, Db, NotebookItem, ReviewLog};
     pub use crate::lexicon::{Entry, Lexicon, Wordbook};
-    pub use crate::session::{record_review, ReviewInput, ReviewOutcome, Scope};
+    pub use crate::session::{record_review, PendingSession, ReviewInput, ReviewOutcome, Scope};
 }
 
 use std::collections::HashMap;
@@ -628,6 +628,41 @@ pub struct AudioCacheInfo {
     pub directory: String,
 }
 
+/// Save the current session so it can be resumed later.
+///
+/// The queue and the position are small, so the whole session is stored as
+/// JSON in the settings table rather than in its own schema.
+#[tauri::command]
+fn save_session(state: State<'_, AppState>, session: session::PendingSession) -> AppResult<()> {
+    let db = state.db.lock().map_err(|_| AppError::Other("database is poisoned".into()))?;
+    let json = serde_json::to_string(&session)?;
+    db.save_pending_session(&json)
+}
+
+/// Read the saved session, if there is one.
+#[tauri::command]
+fn load_session(state: State<'_, AppState>) -> AppResult<Option<session::PendingSession>> {
+    let db = state.db.lock().map_err(|_| AppError::Other("database is poisoned".into()))?;
+    match db.pending_session()? {
+        Some(json) => match serde_json::from_str(&json) {
+            Ok(session) => Ok(Some(session)),
+            // A corrupt record should not block the app; drop it.
+            Err(_) => {
+                db.clear_pending_session()?;
+                Ok(None)
+            }
+        },
+        None => Ok(None),
+    }
+}
+
+/// Forget the saved session.
+#[tauri::command]
+fn clear_session(state: State<'_, AppState>) -> AppResult<()> {
+    let db = state.db.lock().map_err(|_| AppError::Other("database is poisoned".into()))?;
+    db.clear_pending_session()
+}
+
 /// Entry point used by the mobile and desktop shells.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -677,6 +712,9 @@ pub fn run() {
             has_recording,
             audio_cache_info,
             clear_audio_cache,
+            save_session,
+            load_session,
+            clear_session,
         ])
         .run(tauri::generate_context!())
         .expect("error while running LexiFlow");

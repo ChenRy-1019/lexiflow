@@ -317,6 +317,27 @@ impl Db {
         Ok(value)
     }
 
+    /// Save the unfinished session so it can be resumed.
+    ///
+    /// It lives in the settings table because it is a single small value that
+    /// is rewritten on every answer, and a dedicated table would add schema
+    /// churn for no gain.
+    pub fn save_pending_session(&self, json: &str) -> AppResult<()> {
+        self.set_setting("pendingSession", json)
+    }
+
+    /// Read the unfinished session, if one was saved.
+    pub fn pending_session(&self) -> AppResult<Option<String>> {
+        self.setting("pendingSession")
+    }
+
+    /// Forget the unfinished session.
+    pub fn clear_pending_session(&self) -> AppResult<()> {
+        self.conn
+            .execute("DELETE FROM settings WHERE key = ?1", params!["pendingSession"])?;
+        Ok(())
+    }
+
     /// Write a setting.
     pub fn set_setting(&self, key: &str, value: &str) -> AppResult<()> {
         self.conn.execute(

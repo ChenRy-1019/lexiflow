@@ -274,3 +274,36 @@ export async function fetchAudioCacheInfo(): Promise<AudioCacheInfo> {
 export async function clearAudioCache(): Promise<void> {
   return call<void>("clear_audio_cache", undefined, undefined);
 }
+
+/**
+ * An unfinished session.
+ *
+ * Saved whenever the learner answers a word, so leaving practice does not
+ * lose the position.
+ */
+export interface PendingSession {
+  /** The entry ids in the queue, in order. */
+  ids: string[];
+  /** How many words have already been answered. */
+  answered: number;
+  bookId: string;
+  scope: StudyScope;
+  mode: StudyMode;
+  limit: number;
+  updatedAt: number;
+}
+
+/** Save the current session so it can be resumed. */
+export async function saveSession(session: PendingSession): Promise<void> {
+  return call<void>("save_session", { session }, undefined);
+}
+
+/** Read the saved session, if there is one. */
+export async function loadSession(): Promise<PendingSession | null> {
+  return call<PendingSession | null>("load_session", undefined, null);
+}
+
+/** Forget the saved session. */
+export async function clearSession(): Promise<void> {
+  return call<void>("clear_session", undefined, undefined);
+}
