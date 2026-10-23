@@ -21,6 +21,7 @@ import {
 } from "../lib/api";
 import { formatInterval, previewIntervals, review as fsrsReview, retrievability } from "../lib/fsrs";
 import { prefetch, speak, stopSpeaking, whenVoicesReady, type Accent } from "../lib/speech";
+import { playSound, preloadSounds, setSoundEnabled } from "../lib/sounds";
 import type { FsrsCard, Rating, StudyMode, StudyScope } from "../lib/types";
 
 /** Compare two answers the way a learner would expect. */
@@ -145,6 +146,7 @@ export default function PracticePage({
   const [accent, setAccent] = useState<Accent>("us");
   const [speaking, setSpeaking] = useState(false);
   const [autoSpeak, setAutoSpeak] = useState(true);
+  const [soundOn, setSoundOn] = useState(true);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -321,6 +323,12 @@ export default function PracticePage({
     void fetchSetting("autoSpeak").then((value) => {
       if (value !== null) setAutoSpeak(value === "true");
     });
+    void fetchSetting("typingSound").then((value) => {
+      const on = value === null ? true : value === "true";
+      setSoundEnabled(on);
+      setSoundOn(on);
+      if (on) preloadSounds();
+    });
   }, []);
 
   // Speak the word once when it first appears, then only on manual trigger.
@@ -438,7 +446,11 @@ export default function PracticePage({
       expected: current.word,
       revealed: false,
     });
-    
+
+    if (correct) {
+      playSound("success");
+    }
+
     // Speak the word after correct submission in spelling mode
     if (correct && mode === "spelling" && autoSpeak) {
       void pronounceCurrent(current.word);
@@ -480,6 +492,9 @@ export default function PracticePage({
         expected: current.word,
         revealed: false,
       });
+      if (choice.correct) {
+        playSound("success");
+      }
     },
     [current, graded],
   );
@@ -822,6 +837,24 @@ export default function PracticePage({
         >
           {autoSpeak ? "自动朗读 开" : "自动朗读 关"}
         </button>
+
+        <button
+          type="button"
+          className={`chip ${soundOn ? "chip--on" : ""}`}
+          onClick={() => {
+            const next = !soundOn;
+            setSoundOn(next);
+            setSoundEnabled(next);
+            void saveSetting("typingSound", String(next));
+            if (next) {
+              preloadSounds();
+              playSound("key");
+            }
+          }}
+          title="打字音效"
+        >
+          {soundOn ? "音效 开" : "音效 关"}
+        </button>
       </div>
 
       <div className="practice__body">
@@ -894,7 +927,10 @@ export default function PracticePage({
             className="input practice__input"
             value={typed}
             disabled={Boolean(graded) && !copySpelling}
-            onChange={(event) => setTyped(event.target.value)}
+            onChange={(event) => {
+              setTyped(event.target.value);
+              playSound("key");
+            }}
             onKeyDown={onInputKeyDown}
             placeholder={copySpelling ? "照着拼写" : "听音写词"}
             autoComplete="off"
@@ -934,7 +970,10 @@ export default function PracticePage({
             className="input practice__input"
             value={typed}
             disabled={Boolean(graded) && !copySpelling}
-            onChange={(event) => setTyped(event.target.value)}
+            onChange={(event) => {
+              setTyped(event.target.value);
+              playSound("key");
+            }}
             onKeyDown={onInputKeyDown}
             placeholder={copySpelling ? "照着拼写" : "在这里输入英文"}
             autoComplete="off"

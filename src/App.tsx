@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
 import { fetchBooks, fetchStats, isTauri, loadSession, type BookWithStats } from "./lib/api";
+import { autoCheckEnabled, checkForUpdate, type UpdateStatus } from "./lib/updater";
 import type { DashboardStats, StudyMode, StudyScope } from "./lib/types";
 import TitleBar from "./components/TitleBar";
 import StartDialog, { type StartChoice } from "./components/StartDialog";
@@ -10,6 +11,7 @@ import HomePage from "./pages/HomePage";
 import LibraryPage from "./pages/LibraryPage";
 import NotebookPage from "./pages/NotebookPage";
 import PracticePage from "./pages/PracticePage";
+import UpdateDialog from "./components/UpdateDialog";
 import SettingsPage from "./pages/SettingsPage";
 import StatsPage from "./pages/StatsPage";
 
@@ -62,6 +64,9 @@ export default function App() {
   const [pendingRemaining, setPendingRemaining] = useState(0);
   /** Whether the practice page should resume the saved session. */
   const [resumeSession, setResumeSession] = useState(false);
+  /** The update check result, shown in a dialog when present. */
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatus | null>(null);
+  const [pendingUpdate, setPendingUpdate] = useState<Awaited<ReturnType<typeof checkForUpdate>>["update"]>(null);
 
   /** Refresh the counters shown in the sidebar and on the home page. */
   const refresh = useCallback(async () => {
@@ -114,6 +119,38 @@ export default function App() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [immersive]);
+
+  /**
+   * Check for an update.
+   *
+   * Called on startup when the setting is on, and from the settings page when
+   * the learner asks. `showResult` is false for the startup check so a current
+   * version does not interrupt the learner with a dialog.
+   */
+  const runUpdateCheck = useCallback(async (showResult: boolean) => {
+    if (!isTauri()) {
+      if (showResult) {
+        setUpdateStatus({ kind: "failed", reason: "此功能需要在桌面应用中运行" });
+      }
+      return;
+    }
+
+    const { status, update } = await checkForUpdate();
+    setPendingUpdate(update);
+
+    // A startup check only speaks up when there is something to install.
+    if (showResult || status.kind === "available") {
+      setUpdateStatus(status);
+    }
+  }, []);
+
+  useEffect(() => {
+    void autoCheckEnabled().then((enabled) => {
+      if (enabled) {
+        void runUpdateCheck(false);
+      }
+    });
+  }, [runUpdateCheck]);
 
   /** Show a short message at the bottom of the window. */
   const notify = useCallback((message: string) => {
@@ -192,7 +229,13 @@ export default function App() {
       case "stats":
         return <StatsPage stats={stats} books={books} />;
       case "settings":
-        return <SettingsPage onReset={refresh} notify={notify} />;
+        return (
+          <SettingsPage
+            onReset={refresh}
+            notify={notify}
+            onCheckUpdate={() => void runUpdateCheck(true)}
+          />
+        );
       default:
         return null;
     }
@@ -333,6 +376,14 @@ export default function App() {
           defaultScope={startOptions.scope}
           onCancel={() => setStartDialogOpen(false)}
           onStart={startSession}
+        />
+      )}
+
+      {updateStatus && (
+        <UpdateDialog
+          status={updateStatus}
+          update={pendingUpdate}
+          onClose={() => setUpdateStatus(null)}
         />
       )}
 

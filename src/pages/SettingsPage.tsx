@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 
+import { getVersion } from "@tauri-apps/api/app";
+
 import {
   clearAudioCache,
   fetchAudioCacheInfo,
@@ -14,15 +16,20 @@ import {
 interface SettingsPageProps {
   onReset: () => void;
   notify: (message: string) => void;
+  /** Check the release server and show the result in a dialog. */
+  onCheckUpdate?: () => void;
 }
 
 /** The preferences page: data location, backup and resets. */
-export default function SettingsPage({ onReset, notify }: SettingsPageProps) {
+export default function SettingsPage({ onReset, notify, onCheckUpdate }: SettingsPageProps) {
   const [dbPath, setDbPath] = useState("");
   const [lexiconTotal, setLexiconTotal] = useState(0);
   const [dailyGoal, setDailyGoal] = useState("20");
   const [accent, setAccent] = useState("us");
   const [autoSpeak, setAutoSpeak] = useState("true");
+  const [typingSound, setTypingSound] = useState("true");
+  const [autoUpdate, setAutoUpdate] = useState("true");
+  const [appVersion, setAppVersion] = useState("");
   const [cache, setCache] = useState<AudioCacheInfo>({ count: 0, sizeBytes: 0, directory: "" });
 
   /** Refresh the cache counters. */
@@ -42,8 +49,24 @@ export default function SettingsPage({ onReset, notify }: SettingsPageProps) {
     void fetchSetting("autoSpeak").then((value) => {
       if (value !== null) setAutoSpeak(value);
     });
+    void fetchSetting("typingSound").then((value) => {
+      if (value !== null) setTypingSound(value);
+    });
+    void fetchSetting("autoCheckUpdates").then((value) => {
+      if (value !== null) setAutoUpdate(value);
+    });
+    void fetchCurrentVersion().then(setAppVersion);
     void refreshCache();
   }, []);
+
+  /** Read the version of the running application. */
+  async function fetchCurrentVersion(): Promise<string> {
+    try {
+      return await getVersion();
+    } catch {
+      return "";
+    }
+  }
 
   /** Persist a preference. */
   const persist = async (key: string, value: string) => {
@@ -109,6 +132,21 @@ export default function SettingsPage({ onReset, notify }: SettingsPageProps) {
                 <option value="false">关闭</option>
               </select>
             </label>
+
+            <label className="field">
+              <span className="field__label">打字音效</span>
+              <select
+                className="input"
+                value={typingSound}
+                onChange={(event) => {
+                  setTypingSound(event.target.value);
+                  void persist("typingSound", event.target.value);
+                }}
+              >
+                <option value="true">开启</option>
+                <option value="false">关闭</option>
+              </select>
+            </label>
           </div>
         </div>
       </section>
@@ -166,6 +204,45 @@ export default function SettingsPage({ onReset, notify }: SettingsPageProps) {
           >
             清空发音缓存
           </button>
+        </div>
+      </section>
+
+      <section className="card">
+        <div className="card__body">
+          <h2 className="section-title">软件更新</h2>
+          <p className="section-subtitle">
+            安装包由签名验证，下载后自动替换并重启。
+          </p>
+
+          <div className="update-row">
+            <div className="update-row__info">
+              <span className="update-row__version">
+                当前版本 v{appVersion || "—"}
+              </span>
+              <label className="update-row__toggle">
+                <input
+                  type="checkbox"
+                  checked={autoUpdate === "true"}
+                  onChange={(event) => {
+                    const next = event.target.checked ? "true" : "false";
+                    setAutoUpdate(next);
+                    void saveSetting("autoCheckUpdates", next);
+                    notify(next === "true" ? "启动时自动检查更新" : "已关闭自动检查");
+                  }}
+                />
+                启动时自动检查更新
+              </label>
+            </div>
+
+            <button
+              type="button"
+              className="button"
+              onClick={onCheckUpdate}
+              disabled={!onCheckUpdate}
+            >
+              检查更新
+            </button>
+          </div>
         </div>
       </section>
 
