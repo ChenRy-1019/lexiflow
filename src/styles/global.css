@@ -1248,45 +1248,34 @@ select {
   color: var(--text-tertiary);
 }
 
-/* Marks the option that matches the learner's daily goal. */
-.size-picker__hint {
-  display: block;
-  width: 100%;
-  font-size: 9px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  color: var(--text-tertiary);
-  text-align: center;
-  margin-top: 1px;
+/*
+ * The custom tile becomes an editable field in place, so choosing it does not
+ * add a row and shift everything below it.
+ */
+.size-picker__item--entry {
+  cursor: pointer;
+  gap: 2px;
 }
 
-.size-picker__item--active .size-picker__hint {
-  color: var(--blue);
-}
-
-/* The free-form word count, revealed by the custom option. */
-.size-custom {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.size-custom .input {
-  width: 96px;
+.size-entry__input {
+  width: 54px;
+  padding: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 17px;
+  font-weight: 600;
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
 
-.size-custom__unit {
-  font-size: 13px;
-  color: var(--text-secondary);
-}
-
-.size-custom__range {
-  font-size: 11px;
-  color: var(--text-tertiary);
-  margin-left: auto;
+/* The spinner arrows crowd a 54px field; the value is typed directly. */
+.size-entry__input::-webkit-outer-spin-button,
+.size-entry__input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .size-picker__item--active .size-picker__unit {

@@ -1,8 +1,9 @@
 /**
- * Render the start dialog and check the size options follow the goal.
+ * Tests for the start dialog's size options.
  *
- * The dialog used to offer a fixed 10 / 20 / 30 / 50 whatever the learner had
- * set, so a goal of 25 could not be picked from it.
+ * The dialog shows the goal and its multiples, with one editable tile for any
+ * other value. An earlier version offered a half-goal entry, which produced a
+ * stray small number, and revealed the custom field on a second row.
  */
 
 // @vitest-environment jsdom
@@ -57,40 +58,50 @@ async function mount(goal: number) {
   return { host, root, act };
 }
 
-/** The size buttons, in order, as their visible number. */
+/** The numeric tiles, in order. */
 function sizeLabels(host: HTMLElement): string[] {
   const picker = host.querySelector(".size-picker");
   if (!picker) return [];
   return [...picker.querySelectorAll("button")].map(
-    (button) => button.textContent?.replace(/词|目标/g, "").trim() ?? "",
+    (button) => button.textContent?.replace(/词/g, "").trim() ?? "",
   );
 }
 
 describe("StartDialog size options", () => {
-  it("offers the daily goal for a goal of 25", async () => {
-    const { host, root, act } = await mount(25);
-
-    const labels = sizeLabels(host);
-    expect(labels).toContain("25");
-    // The old fixed list had a 10, which no longer fits a goal of 25.
-    expect(labels).not.toContain("10");
-
-    await act(async () => {
-      root.unmount();
-    });
-  });
-
-  it("offers a custom entry instead of the fixed smallest option", async () => {
+  it("offers the goal and its multiples, with no smaller entry", async () => {
     const { host, root, act } = await mount(20);
 
-    expect(sizeLabels(host)).toContain("自定义");
+    // A goal of 20 yields 20, 40 and 60. The old half-goal entry produced a
+    // 10 that sat oddly beside the goal.
+    expect(sizeLabels(host)).toEqual(["20", "40", "60"]);
 
     await act(async () => {
       root.unmount();
     });
   });
 
-  it("shows the goal as the default selection", async () => {
+  it("follows a goal that is not a round number", async () => {
+    const { host, root, act } = await mount(25);
+
+    expect(sizeLabels(host)).toEqual(["25", "50", "75"]);
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it("has no goal badge on any tile", async () => {
+    const { host, root, act } = await mount(20);
+
+    expect(host.querySelector(".size-picker__hint")).toBeNull();
+    expect(host.textContent).not.toContain("目标");
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it("selects the goal by default", async () => {
     const { host, root, act } = await mount(30);
 
     const active = host.querySelector(".size-picker__item--active");
@@ -101,19 +112,22 @@ describe("StartDialog size options", () => {
     });
   });
 
-  it("reveals a free-form field when custom is chosen", async () => {
+  it("turns the last tile into a field without adding a row", async () => {
     const { host, root, act } = await mount(20);
 
-    const buttons = [...host.querySelectorAll(".size-picker button")];
-    const custom = buttons.find((button) => button.textContent?.includes("自定义"));
-    custom?.click();
+    const tiles = host.querySelectorAll(".size-picker > *");
+    expect(tiles).toHaveLength(4);
+
+    const entry = host.querySelector(".size-picker__item--entry");
+    entry?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
 
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 30));
     });
 
-    const field = host.querySelector(".size-custom input");
-    expect(field).not.toBeNull();
+    // Still four tiles: the field replaces the label inside the last one.
+    expect(host.querySelectorAll(".size-picker > *")).toHaveLength(4);
+    expect(host.querySelector(".size-entry__input")).not.toBeNull();
 
     await act(async () => {
       root.unmount();

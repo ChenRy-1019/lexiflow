@@ -30,7 +30,7 @@ const SCOPES: Array<{ id: StudyScope; label: string }> = [
  * it. Values are deduplicated and kept in ascending order.
  */
 function sizeOptions(goal: number): number[] {
-  const around = [goal, Math.max(5, Math.round(goal / 2)), goal * 2, goal * 3];
+  const around = [goal, goal * 2, goal * 3];
   return [...new Set(around.map((size) => Math.round(size)))].sort((a, b) => a - b);
 }
 
@@ -234,52 +234,59 @@ export default function StartDialog({
                 >
                   {size}
                   <span className="size-picker__unit">词</span>
-                  {size === dailyGoal && <span className="size-picker__hint">目标</span>}
                 </button>
               ))}
-              <button
-                type="button"
-                className={`size-picker__item ${custom ? "size-picker__item--active" : ""}`}
+
+              {/*
+                The custom tile holds its own field. Revealing the field in
+                place keeps the row one line tall; a separate row below it
+                pushed the rest of the dialog down every time it opened.
+              */}
+              <div
+                className={`size-picker__item size-picker__item--entry ${
+                  custom ? "size-picker__item--active" : ""
+                }`}
                 onClick={() => {
                   setCustom(true);
                   setCustomValue(String(limit));
                 }}
+                role="presentation"
               >
-                自定义
-              </button>
-            </div>
-
-            {custom && (
-              <div className="size-custom">
-                <input
-                  className="input"
-                  type="number"
-                  min={MIN_SIZE}
-                  max={MAX_SIZE}
-                  value={customValue}
-                  autoFocus
-                  onChange={(event) => {
-                    setCustomValue(event.target.value);
-                    const parsed = Number(event.target.value);
-                    if (Number.isInteger(parsed) && parsed >= MIN_SIZE && parsed <= MAX_SIZE) {
-                      setLimit(parsed);
-                    }
-                  }}
-                  onBlur={() => {
-                    // Keep the field and the chosen size in step.
-                    const parsed = Number(customValue);
-                    if (!Number.isInteger(parsed) || parsed < MIN_SIZE || parsed > MAX_SIZE) {
-                      setCustomValue(String(limit));
-                    } else {
-                      setLimit(parsed);
-                    }
-                  }}
-                  aria-label="自定义数量"
-                />
-                <span className="size-custom__unit">词</span>
-                <span className="size-custom__range">1 – 200</span>
+                {custom ? (
+                  <>
+                    <input
+                      className="size-entry__input"
+                      type="number"
+                      min={MIN_SIZE}
+                      max={MAX_SIZE}
+                      value={customValue}
+                      autoFocus
+                      onClick={(event) => event.stopPropagation()}
+                      onChange={(event) => {
+                        setCustomValue(event.target.value);
+                        const parsed = Number(event.target.value);
+                        if (Number.isInteger(parsed) && parsed >= MIN_SIZE && parsed <= MAX_SIZE) {
+                          setLimit(parsed);
+                        }
+                      }}
+                      onBlur={() => {
+                        // Keep the field and the chosen size in step.
+                        const parsed = Number(customValue);
+                        if (!Number.isInteger(parsed) || parsed < MIN_SIZE || parsed > MAX_SIZE) {
+                          setCustomValue(String(limit));
+                        } else {
+                          setLimit(parsed);
+                        }
+                      }}
+                      aria-label="自定义数量"
+                    />
+                    <span className="size-picker__unit">词</span>
+                  </>
+                ) : (
+                  "自定义"
+                )}
               </div>
-            )}
+            </div>
           </section>
 
           <p className="start-dialog__summary">

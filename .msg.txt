@@ -1,0 +1,10 @@
+Tidy the session size row
+
+Three things made the row look wrong. The goal carried a small badge that
+read as a stray label, a half-goal entry produced an odd value below the
+others, and choosing custom revealed the field on a second row which pushed
+the summary and buttons down.
+
+The options are now the goal and its multiples only. The custom tile turns
+into its own field in place, so the row keeps one line and its height whether
+ or not the field is open.
