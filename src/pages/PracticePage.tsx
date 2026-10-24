@@ -509,8 +509,10 @@ export default function PracticePage({
    *
    * Showing the answer is not the end of the question: the learner types the
    * word while it is visible, and only then is the question graded. That
-   * applies in every mode that has a text field, including dictation, where
-   * the answer would otherwise be unavailable after revealing.
+   * applies to the modes that have a text field — spelling and dictation.
+   *
+   * The choice mode has no field to type into, so offering a copy step there
+   * gave a panel and a button with nothing to fill in.
    */
   const reveal = useCallback(() => {
     if (!current || graded) return;
@@ -520,7 +522,8 @@ export default function PracticePage({
       expected: current.word,
       revealed: true,
     });
-    setCopySpelling(true);
+    // Only the typed modes can copy the word.
+    setCopySpelling(mode !== "choice");
     setTyped("");
     // The dictation mode has no visible prompt, so play the word again to
     // make the copy step possible.

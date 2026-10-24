@@ -1,0 +1,10 @@
+Keep the copy step out of the choice mode
+
+Revealing the answer started the copy step in every mode, but the choice
+mode has no field to type into: the page showed a copy panel and a
+抄写完成 button whose condition could never be met. The step now starts only
+in the typed modes, spelling and dictation, and the choice mode goes straight
+to the review card.
+
+Three DOM tests cover it: no copy panel after revealing in the choice mode,
+and a copy panel in spelling and dictation.
