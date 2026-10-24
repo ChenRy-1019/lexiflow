@@ -147,6 +147,8 @@ export default function PracticePage({
   const [speaking, setSpeaking] = useState(false);
   const [autoSpeak, setAutoSpeak] = useState(true);
   const [soundOn, setSoundOn] = useState(true);
+  /** The current mode, readable from callbacks that must not depend on it. */
+  const modeRef = useRef(mode);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -192,7 +194,13 @@ export default function PracticePage({
     [],
   );
 
-  /** Load a fresh session from the backend. */
+  /**
+   * Load a fresh session from the backend.
+   *
+   * `mode` is read through a ref rather than the closure: switching mode must
+   * not rebuild this callback, because that would re-run the session effect
+   * and, when resuming, restore the saved mode over the learner's choice.
+   */
   const load = useCallback(
     async (nextBook: string, nextScope: StudyScope, size: number) => {
       setLoading(true);
@@ -229,7 +237,7 @@ export default function PracticePage({
         answered: 0,
         bookId: nextBook,
         scope: nextScope,
-        mode,
+        mode: modeRef.current,
         limit: size,
         updatedAt: Date.now(),
       });
@@ -240,7 +248,8 @@ export default function PracticePage({
         void prefetch(mapped[0].word, accent);
       }
     },
-    [autoSpeak, accent, mode],
+    // `mode` is intentionally absent; see the note above.
+    [autoSpeak, accent],
   );
 
   /**
@@ -390,13 +399,24 @@ export default function PracticePage({
    *
    * Otherwise a fresh session is built from the chosen book and scope.
    */
+  /** Guards the session effect so a restore runs exactly once per mount. */
+  const startedRef = useRef(false);
+
   useEffect(() => {
+    // The first pass establishes the session. Later passes are caused by the
+    // restore itself setting bookId or scope; reusing the same guard keeps
+    // them from restarting, which would discard the mode the learner chose.
+    if (startedRef.current) return;
+
     if (!resume) {
+      startedRef.current = true;
       void load(bookId, scope, sessionSize);
       return;
     }
 
     void loadSession().then((saved) => {
+      if (startedRef.current) return;
+      startedRef.current = true;
       // Only a session with words still to answer is worth resuming.
       if (saved && saved.ids.length > saved.answered) {
         void restore(saved);
@@ -404,9 +424,15 @@ export default function PracticePage({
         void load(bookId, scope, sessionSize);
       }
     });
-    // Runs once per mount. Changing the book or scope starts a fresh session.
+    // Runs once per mount; see the guard above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [load, bookId, scope]);
+
+  // Keep the ref in step with the state, so `load` can record the mode without
+  // depending on it.
+  useEffect(() => {
+    modeRef.current = mode;
+  }, [mode]);
 
   // Focus the answer field whenever a new question appears.
   useEffect(() => {
@@ -752,7 +778,13 @@ export default function PracticePage({
         <select
           className="input"
           value={bookId}
-          onChange={(event) => setBookId(event.target.value)}
+          onChange={(event) => {
+            const next = event.target.value;
+            setBookId(next);
+            // Picking another book starts a new session; the mount-time guard
+            // must not swallow that.
+            void load(next, scope, sessionSize);
+          }}
           aria-label="词书"
         >
           <option value="">全部词书</option>
@@ -765,7 +797,11 @@ export default function PracticePage({
         <select
           className="input"
           value={scope}
-          onChange={(event) => setScope(event.target.value as StudyScope)}
+          onChange={(event) => {
+            const next = event.target.value as StudyScope;
+            setScope(next);
+            void load(bookId, next, sessionSize);
+          }}
           aria-label="范围"
         >
           <option value="mix">新词 + 复习</option>
@@ -785,7 +821,11 @@ export default function PracticePage({
         <select
           className="input"
           value={sessionSize}
-          onChange={(event) => setSessionSize(Number(event.target.value))}
+          onChange={(event) => {
+            const next = Number(event.target.value);
+            setSessionSize(next);
+            void load(bookId, scope, next);
+          }}
           aria-label="本轮数量"
           title="改数量后会重新开始一轮"
         >
