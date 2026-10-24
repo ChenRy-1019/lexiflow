@@ -1666,6 +1666,45 @@ select {
   cursor: wait;
 }
 
+/* The memory standing chip: a word's place in its own schedule, not a
+   percentage that always reads 100% during practice. */
+.chip--memory {
+  gap: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+}
+
+.chip--memory-new {
+  color: var(--blue);
+  background: var(--blue-soft);
+  border-color: #cfdbe6;
+}
+
+.chip--memory-fragile {
+  color: var(--yellow);
+  background: var(--yellow-soft);
+  border-color: #efe1bd;
+}
+
+.chip--memory-settling {
+  color: var(--blue);
+  background: var(--blue-soft);
+  border-color: #cfdbe6;
+}
+
+.chip--memory-solid {
+  color: var(--green);
+  background: var(--green-soft);
+  border-color: #cfe0d7;
+}
+
+.chip__sub {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.7;
+}
+
 /* ---------------------------------------------------------------- review */
 
 .review {

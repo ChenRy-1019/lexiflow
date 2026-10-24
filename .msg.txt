@@ -1,0 +1,14 @@
+Replace the memory percentage with a useful standing
+
+The chip read "记忆强度 100%" every time a word was practised, which
+made it look broken. The metric was accurate but misplaced: retrievability
+measures decay since the last review, so it is at its maximum exactly when
+a word is being reviewed. Probing the values confirmed it reported 100% for
+new and mature cards alike.
+
+The chip now names where the word stands in its schedule, using the
+stability band the scheduler actually acts on: new, just learned, still
+shallow, settling, or solid, with the current interval beside it. The
+tooltip gives the review and lapse counts.
+
+Seven tests pin the bands, including that the labels are not all the same.

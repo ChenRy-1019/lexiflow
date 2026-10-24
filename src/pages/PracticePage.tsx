@@ -19,7 +19,8 @@ import {
   type BookWithStats,
   type Choice,
 } from "../lib/api";
-import { formatInterval, previewIntervals, review as fsrsReview, retrievability } from "../lib/fsrs";
+import { formatInterval, previewIntervals, review as fsrsReview } from "../lib/fsrs";
+import { memoryStanding } from "../lib/memory";
 import { prefetch, speak, stopSpeaking, whenVoicesReady, type Accent } from "../lib/speech";
 import { playSound, preloadSounds, setSoundEnabled } from "../lib/sounds";
 import type { FsrsCard, Rating, StudyMode, StudyScope } from "../lib/types";
@@ -94,6 +95,10 @@ interface QueueItem {
   etymology: string;
   isReview: boolean;
   priorCard: FsrsCard | null;
+  /** How many times the word has been reviewed, from the stored card. */
+  reviews: number;
+  /** How many times it has been forgotten. */
+  lapses: number;
 }
 
 interface PracticePageProps {
@@ -187,6 +192,8 @@ export default function PracticePage({
             etymology: entry.etymology,
             isReview: Boolean(stored?.due),
             priorCard: stored?.card ? (JSON.parse(stored.card) as FsrsCard) : null,
+            reviews: stored?.correctCount ?? 0,
+            lapses: stored?.lapseCount ?? 0,
           },
         ];
       });
@@ -221,6 +228,8 @@ export default function PracticePage({
           etymology: item.entry.etymology,
           isReview: item.isReview,
           priorCard: stored?.card ? (JSON.parse(stored.card) as FsrsCard) : null,
+          reviews: stored?.correctCount ?? 0,
+          lapses: stored?.lapseCount ?? 0,
         };
       });
 
@@ -456,10 +465,15 @@ export default function PracticePage({
     return previewIntervals(current.priorCard);
   }, [current]);
 
-  /** The learner's estimated recall of the current word. */
-  const strength = useMemo(() => {
-    if (!current?.priorCard) return null;
-    return retrievability(current.priorCard);
+  /**
+   * Where the current word stands in its memory schedule.
+   *
+   * This replaced a percentage that read 100% at every practice moment, since
+   * the metric only measures decay since the last review.
+   */
+  const standing = useMemo(() => {
+    if (!current) return null;
+    return memoryStanding(current.priorCard, current.reviews, current.lapses);
   }, [current]);
 
   /** Grade the typed answer against the expected word. */
@@ -839,8 +853,20 @@ export default function PracticePage({
           {index + 1} / {queue.length}
         </span>
         {current.isReview && <span className="chip">复习</span>}
-        {strength !== null && (
-          <span className="chip chip--outline">记忆强度 {Math.round(strength * 100)}%</span>
+        {standing && (
+          <span
+            className={`chip chip--memory chip--memory-${standing.tone}`}
+            title={
+              standing.tone === "new"
+                ? "第一次见到这个词"
+                : `已复习 ${standing.reviews} 次，忘记 ${standing.lapses} 次，下次间隔约 ${standing.intervalDays} 天`
+            }
+          >
+            {standing.label}
+            {standing.tone !== "new" && (
+              <span className="chip__sub">{standing.intervalDays}d</span>
+            )}
+          </span>
         )}
 
         <button
