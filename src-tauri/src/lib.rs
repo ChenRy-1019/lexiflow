@@ -608,35 +608,59 @@ fn build_choices(
     entry_id: String,
     book_id: String,
 ) -> AppResult<Vec<Choice>> {
-    let entry = state
-        .lexicon
-        .entry(&entry_id)
+    let db = state.db.lock().map_err(|_| AppError::Other("database is poisoned".into()))?;
+
+    // The word may be bundled or imported; one lookup covers both.
+    let entry = resolve_one(&db, &state.lexicon, &entry_id)
         .ok_or_else(|| AppError::Vocabulary(format!("unknown entry {entry_id}")))?;
 
-    let mut pool: Vec<&Entry> = state
-        .lexicon
-        .book_entries(&book_id)
-        .iter()
-        .filter_map(|id| state.lexicon.entry(id))
-        .filter(|candidate| candidate.phrase == entry.phrase)
-        .collect();
+    // The question's own book first, so the distractors come from nearby
+    // vocabulary rather than a random corner of the dictionary.
+    let mut pool: Vec<Entry> = {
+        let bundled = state.lexicon.book_entries(&book_id);
+        if !bundled.is_empty() {
+            state.lexicon.resolve(bundled)
+        } else {
+            db.custom_entries(&book_id)?
+                .into_iter()
+                .map(|item| Entry {
+                    id: item.entry_id,
+                    word: item.word,
+                    meaning: item.meaning,
+                    pos: item.pos,
+                    phonetic: item.phonetic,
+                    example: String::new(),
+                    example_zh: String::new(),
+                    phrase: false,
+                    etymology: String::new(),
+                })
+                .collect()
+        }
+    };
+    pool.retain(|candidate| candidate.phrase == entry.phrase);
 
     if pool.len() < 8 {
-        pool = state
-            .lexicon
-            .books()
-            .iter()
-            .flat_map(|book| state.lexicon.book_entries(&book.id))
-            .filter_map(|id| state.lexicon.entry(id))
+        // Widen to the whole vocabulary, imported books included. The ids are
+        // gathered from both sources and resolved together, so a word in an
+        // imported book gets distractors as readily as a bundled one.
+        let mut all: Vec<String> = Vec::new();
+        for book in state.lexicon.books() {
+            all.extend(state.lexicon.book_entries(&book.id).iter().cloned());
+        }
+        for item in db.all_custom_entries()? {
+            all.push(item.entry_id);
+        }
+
+        pool = resolve_any(&db, &state.lexicon, &all)
+            .into_iter()
             .filter(|candidate| candidate.phrase == entry.phrase && candidate.id != entry_id)
             .collect();
     }
 
     // Pick three random distractors from the pool.
-    let mut distractors: Vec<&Entry> = pool
-        .iter()
+    let mut distractors: Vec<Entry> = pool
+        .into_iter()
         .filter(|candidate| candidate.id != entry_id && candidate.meaning != entry.meaning)
-        .copied()
         .collect();
 
     // Shuffle and take 3 for variety.

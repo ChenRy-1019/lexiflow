@@ -1,0 +1,18 @@
+Fix imported words losing their options and sessions resuming unasked
+
+Two defects, both visible only with an imported book.
+
+The multiple-choice mode showed no Chinese options for an imported word.
+uild_choices widened its distractor pool by scanning only the bundled
+lexicon, so an imported word found nothing and the question came back with a
+single choice. It now resolves both sources and takes the pool from the
+question's own book first.
+
+Starting a session from the dialog fell through to the resume path, so a
+book and word count just chosen were replaced by whatever queue was on disk.
+That is why picking the 2220-word CET-6 book opened a short CET-4 session.
+Resuming now happens only when the learner pressed 继续学习, and starting
+afresh session clears the stale one so the home page stops offering it.
+
+Frontend tests 88, Rust 82, including one that picks a book while a saved
+session exists and asserts the chosen book is the one loaded.

@@ -413,12 +413,19 @@ export default function PracticePage({
 
   useEffect(() => {
     // The first pass establishes the session. Later passes are caused by the
-    // restore itself setting bookId or scope; reusing the same guard keeps
-    // them from restarting, which would discard the mode the learner chose.
+    // restore itself setting bookId or scope; the guard keeps them from
+    // restarting, which would discard the mode the learner chose.
     if (startedRef.current) return;
 
+    // A session is resumed only when the learner pressed 继续学习. Starting
+    // from the dialog always honours the book and count just chosen: reading
+    // the saved session there meant a stale queue from another book replaced
+    // the selection, and the practice page opened on the wrong words.
     if (!resume) {
       startedRef.current = true;
+      // Leaving a stale session on disk would make the home page offer to
+      // continue a round the learner has moved on from.
+      void clearSession();
       void load(bookId, scope, sessionSize);
       return;
     }
