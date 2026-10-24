@@ -1,0 +1,11 @@
+Let an imported word be rated so practice can advance
+
+record_review resolved the word in the bundled lexicon only, so rating an
+imported word returned "unknown entry". The practice page then never moved
+on: the rating call threw before the index advanced, which is why the first
+word of an imported book could not be left.
+
+The lookup now goes through the shared resolver, which answers from either
+source. Four tests cover it: the rating records a card, two correct ratings
+reach mastery, a wrong answer is counted as a lapse, and a log entry is
+written.

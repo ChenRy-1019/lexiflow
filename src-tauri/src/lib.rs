@@ -716,11 +716,11 @@ fn record_review(
     let db = state.db.lock().map_err(|_| AppError::Other("database is poisoned".into()))?;
     let now = util::now_ms();
 
-    let entry = state
-        .lexicon
-        .entry(&request.entry_id)
-        .ok_or_else(|| AppError::Vocabulary(format!("unknown entry {}", request.entry_id)))?
-        .clone();
+    // The word may be bundled or imported. Looking it up in the bundled
+    // lexicon alone made rating an imported word fail, which stopped the
+    // practice page from advancing at all.
+    let entry = resolve_one(&db, &state.lexicon, &request.entry_id)
+        .ok_or_else(|| AppError::Vocabulary(format!("unknown entry {}", request.entry_id)))?;
 
     let outcome = session::record_review(
         &db,
