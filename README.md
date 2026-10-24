@@ -1,14 +1,34 @@
-# LexiFlow
+# LexiFlow · 词汇流
 
 一个本地优先的英语词汇学习桌面应用。数据全部留在本机，用 **FSRS** 科学记忆算法
 安排复习，用 **词根词缀** 帮你拆解生词。
 
-**[下载最新版](https://github.com/ChenRy-1019/lexiflow/releases/latest)** ·
-[安装说明](docs/INSTALL.md) · [数据来源](docs/DATA_SOURCES.md)
+---
 
-> Windows 10 / 11 64 位。双击安装，无需注册账号。
+## ⬇️ 想装软件？点这里
+
+### **[👉 下载最新版安装包](https://github.com/ChenRy-1019/lexiflow/releases/latest)**
+
+打开页面后，在下方 **Assets** 里点 `LexiFlow_x.x.x_x64-setup.exe` 下载。
+
+> **⚠️ 不要点绿色的「Code」按钮下载 ZIP**
+>
+> 那个是**源代码**，下载下来不能直接运行，需要自己编译。
+> 你要的安装程序在 **Releases** 页面里。
+
+**如果 GitHub 打不开或很慢**，用镜像：
+
+```
+https://ghproxy.net/https://github.com/ChenRy-1019/lexiflow/releases/latest/download/LexiFlow_0.2.1_x64-setup.exe
+```
+
+装好后双击就能用，不需要注册账号，不需要配置。
+Windows 10 / 11 64 位。详细说明见 [安装说明](docs/INSTALL.md)。
+
+---
 
 ## 为什么做这个
+
 
 现有的背单词软件大多在两个方向上走极端：要么塞满花哨的功能，要么只是一张
 单词卡列表。LexiFlow 想解决的问题很具体——
