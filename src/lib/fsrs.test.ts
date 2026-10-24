@@ -88,9 +88,28 @@ describe("retrievability", () => {
 });
 
 describe("formatting", () => {
-  it("renders short intervals in hours", () => {
-    expect(formatInterval(0.01)).toBe("< 1h");
+  it("renders learning steps in minutes, not all as one label", () => {
+    // The four first-review intervals are minutes apart. Showing them all as
+    // "< 1h" made the rating buttons look identical.
+    expect(formatInterval(1 / 1440)).toBe("1m"); // one minute
+    expect(formatInterval(6 / 1440)).toBe("6m");
+    expect(formatInterval(10 / 1440)).toBe("10m");
+
+    const labels = new Set([
+      formatInterval(1 / 1440),
+      formatInterval(6 / 1440),
+      formatInterval(10 / 1440),
+    ]);
+    expect(labels.size).toBe(3);
+  });
+
+  it("renders sub-minute intervals without a unit clash", () => {
+    expect(formatInterval(0.0001)).toBe("<1m");
+  });
+
+  it("renders half-day and multi-hour intervals in hours", () => {
     expect(formatInterval(0.5)).toBe("12h");
+    expect(formatInterval(0.25)).toBe("6h");
   });
 
   it("renders medium intervals in days", () => {
@@ -101,6 +120,11 @@ describe("formatting", () => {
   it("renders long intervals in months and years", () => {
     expect(formatInterval(60)).toBe("2.0mo");
     expect(formatInterval(730)).toBe("2.0y");
+  });
+
+  it("renders a non-positive interval as a dash", () => {
+    expect(formatInterval(0)).toBe("—");
+    expect(formatInterval(Number.NaN)).toBe("—");
   });
 });
 

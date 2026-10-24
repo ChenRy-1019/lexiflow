@@ -89,11 +89,11 @@ export function review(
   card: FsrsCard | null,
   rating: Rating,
   reviewedAt: number = now(),
-): { card: FsrsCard; log: unknown } {
+): { card: FsrsCard; log: unknown; state: number } {
   const s = getScheduler();
   const input = card ? fromCard(card) : createEmptyCard(new Date(reviewedAt));
   const result = s.next(input, new Date(reviewedAt), rating as Grade);
-  return { card: toCard(result.card), log: result.log };
+  return { card: toCard(result.card), log: result.log, state: result.card.state };
 }
 
 /**
@@ -118,8 +118,15 @@ export function previewIntervals(
 
 /** Render an interval expressed in days as a short human label. */
 export function formatInterval(days: number): string {
-  if (!Number.isFinite(days) || days <= 0) return "< 1h";
-  if (days < 1 / 24) return "< 1h";
+  if (!Number.isFinite(days) || days <= 0) return "—";
+
+  const minutes = days * 24 * 60;
+
+  // Learning steps are minutes apart, so a day-based label collapsed several
+  // different schedules into the same "< 1h" and made the four buttons look
+  // identical. Minutes are shown explicitly instead.
+  if (minutes < 1) return "<1m";
+  if (minutes < 60) return `${Math.round(minutes)}m`;
   if (days < 1) return `${Math.round(days * 24)}h`;
   if (days < 30) return `${Math.round(days)}d`;
   if (days < 365) return `${(days / 30).toFixed(1)}mo`;

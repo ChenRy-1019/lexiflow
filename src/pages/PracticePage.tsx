@@ -544,7 +544,9 @@ export default function PracticePage({
         durationMs: Date.now() - startedAt,
         cardJson,
         due: outcome.card.due,
-        state: 2,
+        // Keep the state FSRS returned: a word in a learning step is not the
+        // same as one under review, and forcing 2 discarded that stage.
+        state: outcome.state,
         correct: graded.correct && rating >= 3,
       });
 
@@ -863,9 +865,9 @@ export default function PracticePage({
         {mode === "choice" ? (
         <div className="practice__stage">
           <p className="practice__word">{current.word}</p>
-          <p className="practice__pos">选出正确的释义</p>
+          <p className="practice__pos choice__prompt">从下面选出它的中文释义</p>
           <div className="choices">
-            {choices.map((choice) => {
+            {choices.map((choice, index) => {
               const state = graded
                 ? choice.correct
                   ? "choice--correct"
@@ -881,7 +883,15 @@ export default function PracticePage({
                   disabled={Boolean(graded)}
                   onClick={() => pickChoice(choice)}
                 >
-                  {choice.text}
+                  {/* The index matches the 1-4 shortcut, so the keys and the
+                      list refer to the same option. */}
+                  <span className="choice__index">{index + 1}</span>
+                  <span className="choice__text">{choice.text}</span>
+                  {graded && choice.correct && (
+                    <span className="choice__mark" aria-label="正确答案">
+                      ✓
+                    </span>
+                  )}
                 </button>
               );
             })}

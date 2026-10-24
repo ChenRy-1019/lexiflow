@@ -1,0 +1,15 @@
+Show real intervals on the rating buttons and tidy the choices
+
+Every rating button read "< 1h" for a new word, so the four looked
+identical and the scheduling seemed to do nothing. The cause was the label,
+not the scheduler: the first-review intervals are 1, 6 and 10 minutes, and a
+day-based formatter collapsed them into one string. Intervals under an hour
+are now shown in minutes, and a non-positive value renders as a dash instead
+of a fake interval.
+
+The card's FSRS state is also stored as returned rather than forced to 2, so a
+word in a learning step keeps that stage.
+
+The multiple-choice options were unaligned blocks of differing length. Each
+is now numbered (matching the 1-4 shortcuts), the gloss sits in its own
+column, and the correct answer is marked with a tick.

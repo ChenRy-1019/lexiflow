@@ -1836,13 +1836,22 @@ select {
   margin: 0 auto;
 }
 
+/*
+ * The options are a numbered column. The number doubles as the keyboard
+ * shortcut and gives the eye a fixed anchor, which a stack of unaligned
+ * glosses of differing length did not have.
+ */
 .choice {
-  padding: 14px 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
   text-align: left;
   font-size: 15px;
+  line-height: 1.6;
   transition: border-color var(--duration-fast) var(--ease),
     background var(--duration-fast) var(--ease);
 }
@@ -1852,16 +1861,74 @@ select {
   background: var(--gray-100);
 }
 
+.choice__index {
+  display: grid;
+  place-items: center;
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-alt);
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  transition: background var(--duration-fast) var(--ease),
+    color var(--duration-fast) var(--ease);
+}
+
+.choice__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.choice__mark {
+  flex: 0 0 auto;
+  color: var(--green);
+  font-weight: 600;
+  margin-top: 1px;
+}
+
+.choice:hover:not(:disabled) .choice__index {
+  background: var(--white);
+  color: var(--text-secondary);
+}
+
 .choice--correct {
   border-color: var(--green);
   background: var(--green-soft);
+}
+
+.choice--correct .choice__index {
+  background: var(--green);
+  color: var(--white);
+}
+
+.choice--correct .choice__text {
   color: var(--green);
 }
 
 .choice--wrong {
   border-color: var(--red);
   background: var(--red-soft);
+}
+
+.choice--wrong .choice__index {
+  background: var(--red);
+  color: var(--white);
+}
+
+.choice--wrong .choice__text {
   color: var(--red);
+}
+
+/* The prompt above the options. */
+.choice__prompt {
+  font-size: 13px;
+  font-style: normal;
+  letter-spacing: 0.02em;
+  margin-bottom: 22px;
 }
 
 /* --------------------------------------------------------------- library */
