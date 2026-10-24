@@ -307,3 +307,77 @@ export async function loadSession(): Promise<PendingSession | null> {
 export async function clearSession(): Promise<void> {
   return call<void>("clear_session", undefined, undefined);
 }
+
+/** One row recovered from an imported file. */
+export interface ParsedRow {
+  word: string;
+  meaning: string;
+  phonetic: string;
+  pos: string;
+}
+
+/** What a file contains, shown before importing. */
+export interface ImportPreview {
+  rows: ParsedRow[];
+  /** How the file was read: 文本, CSV, Excel, PDF… */
+  format: string;
+  /** Column headers, empty when the file had none. */
+  headers: string[];
+  wordColumn: number;
+  meaningColumn: number | null;
+  /** Rows set aside because they did not look like vocabulary. */
+  skipped: number;
+  /** A note such as a PDF extraction warning. */
+  warning: string | null;
+  /** A name for the book, from the file name. */
+  suggestedName: string;
+}
+
+/** An imported wordbook. */
+export interface CustomBook {
+  id: string;
+  name: string;
+  source: string;
+  format: string;
+  importedAt: number;
+  total: number;
+}
+
+/**
+ * Read a file and report what it contains, without writing anything.
+ *
+ * Passing `wordColumn` and `meaningColumn` re-parses with those columns, which
+ * is how the dialog lets the learner correct a column that was guessed wrong.
+ */
+export async function previewImport(
+  path: string,
+  wordColumn?: number,
+  meaningColumn?: number | null,
+): Promise<ImportPreview> {
+  return call<ImportPreview>(
+    "preview_import",
+    {
+      request: {
+        path,
+        wordColumn: wordColumn ?? null,
+        meaningColumn: meaningColumn ?? null,
+      },
+    },
+    null as never,
+  );
+}
+
+/** Store the rows as a new wordbook. */
+export async function importBook(
+  name: string,
+  source: string,
+  format: string,
+  rows: ParsedRow[],
+): Promise<CustomBook> {
+  return call<CustomBook>("import_book", { name, source, format, rows }, null as never);
+}
+
+/** Delete an imported wordbook. */
+export async function deleteBook(bookId: string): Promise<void> {
+  return call<void>("delete_book", { bookId }, undefined);
+}

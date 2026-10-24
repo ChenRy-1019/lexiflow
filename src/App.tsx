@@ -215,7 +215,14 @@ export default function App() {
 />
         );
       case "library":
-        return <LibraryPage books={books} onStart={(bookId) => openStartDialog(bookId ?? undefined)} />;
+        return (
+        <LibraryPage
+          books={books}
+          onStart={(bookId) => openStartDialog(bookId ?? undefined)}
+          onRefresh={refresh}
+          notify={notify}
+        />
+      );
       case "practice":
         return (
           <PracticePage

@@ -14,6 +14,7 @@
 mod audio;
 mod db;
 mod error;
+pub mod import;
 mod lexicon;
 mod session;
 mod util;
@@ -22,7 +23,11 @@ mod util;
 pub mod testing {
     pub use crate::db::{Card, DashboardStats, Db, NotebookItem, ReviewLog};
     pub use crate::lexicon::{Entry, Lexicon, Wordbook};
-    pub use crate::session::{record_review, PendingSession, ReviewInput, ReviewOutcome, Scope};
+    pub use crate::session::{
+        build_session, record_review, due_count, mastered_count, started_count, PendingSession,
+        ReviewInput, ReviewOutcome, Scope, SessionItem,
+    };
+    pub use crate::db::{CustomBook, CustomEntry};
 }
 
 use std::collections::HashMap;
@@ -249,6 +254,93 @@ fn dashboard_stats(
     })
 }
 
+/// Read an optional column index that may arrive as null.
+///
+/// The frontend sends `null` for "not chosen", which serde would reject for a
+/// `Option<usize>` read through a plain default.
+fn deserialize_optional_index<'de, D>(deserializer: D) -> Result<Option<usize>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let value = Option::<i64>::deserialize(deserializer)?;
+    Ok(value.and_then(|number| if number < 0 { None } else { Some(number as usize) }))
+}
+
+/// A request to preview a file before importing it.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportPreviewRequest {
+    /// Absolute path of the file to read.
+    pub path: String,
+    /// Which column holds the headword, when the learner changed it.
+    #[serde(default, deserialize_with = "deserialize_optional_index")]
+    pub word_column: Option<usize>,
+    /// Which column holds the gloss.
+    #[serde(default, deserialize_with = "deserialize_optional_index")]
+    pub meaning_column: Option<usize>,
+}
+
+/// What a preview found, plus the rows to import.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportPreview {
+    /// The rows that would be imported.
+    pub rows: Vec<import::ParsedRow>,
+    /// How the file was read, shown in the dialog.
+    pub format: String,
+    /// Column headers, empty when the file had none.
+    pub headers: Vec<String>,
+    pub word_column: usize,
+    pub meaning_column: Option<usize>,
+    /// Rows set aside as not vocabulary.
+    pub skipped: usize,
+    /// A note for the learner, such as a PDF extraction warning.
+    pub warning: Option<String>,
+    /// A suggested name for the book, taken from the file name.
+    pub suggested_name: String,
+}
+
+/// Look up entries by id across both the bundled and imported vocabulary.
+///
+/// Every command that turns a stored id back into a word goes through here,
+/// so an imported book behaves exactly like a built-in one: study sessions,
+/// the notebook and the choice options all see it.
+fn resolve_any(db: &Db, state_lexicon: &lexicon::Lexicon, ids: &[String]) -> Vec<Entry> {
+    let mut out: Vec<Entry> = Vec::with_capacity(ids.len());
+    let mut missing: Vec<String> = Vec::new();
+
+    for id in ids {
+        match state_lexicon.entry(id) {
+            Some(entry) => out.push(entry.clone()),
+            None => missing.push(id.clone()),
+        }
+    }
+
+    if !missing.is_empty() {
+        // Imported entries live in the database; a single query covers them.
+        if let Ok(imported) = db.custom_entries_by_ids(&missing) {
+            out.extend(imported.into_iter().map(|entry| Entry {
+                id: entry.entry_id,
+                word: entry.word,
+                meaning: entry.meaning,
+                pos: entry.pos,
+                phonetic: entry.phonetic,
+                example: String::new(),
+                example_zh: String::new(),
+                phrase: false,
+                etymology: String::new(),
+            }));
+        }
+    }
+
+    out
+}
+
+/// Look up one entry by id across both sources.
+fn resolve_one(db: &Db, state_lexicon: &lexicon::Lexicon, id: &str) -> Option<Entry> {
+    resolve_any(db, state_lexicon, &[id.to_string()]).into_iter().next()
+}
+
 /// List every wordbook with live counters.
 #[tauri::command]
 fn list_books(state: State<'_, AppState>) -> AppResult<Vec<BookWithStats>> {
@@ -256,12 +348,37 @@ fn list_books(state: State<'_, AppState>) -> AppResult<Vec<BookWithStats>> {
     let cards = db.all_cards()?;
 
     let mut books = Vec::with_capacity(state.lexicon.books().len());
+
+    // Bundled books.
     for book in state.lexicon.books() {
         let ids = state.lexicon.book_entries(&book.id);
+        books.push(BookWithStats {
+            book: book.clone(),
+            started: 0,
+            mastered: 0,
+        });
+        if let Some(last) = books.last_mut() {
+            for id in ids {
+                if let Some(card) = cards.get(id) {
+                    if card.first_seen_at > 0 {
+                        last.started += 1;
+                    }
+                    if card.mastered {
+                        last.mastered += 1;
+                    }
+                }
+            }
+        }
+    }
+
+    // Imported books sit beside them, marked so the interface can offer a
+    // delete action that the bundled books do not have.
+    for imported in db.custom_books()? {
+        let entries = db.custom_entries(&imported.id)?;
         let mut started = 0usize;
         let mut mastered = 0usize;
-        for id in ids {
-            if let Some(card) = cards.get(id) {
+        for entry in &entries {
+            if let Some(card) = cards.get(&entry.entry_id) {
                 if card.first_seen_at > 0 {
                     started += 1;
                 }
@@ -270,19 +387,148 @@ fn list_books(state: State<'_, AppState>) -> AppResult<Vec<BookWithStats>> {
                 }
             }
         }
+
         books.push(BookWithStats {
-            book: book.clone(),
+            book: Wordbook {
+                id: imported.id,
+                name: imported.name,
+                category: "我的词书".into(),
+                short: imported.format,
+                description: if imported.source.is_empty() {
+                    "导入的词书".into()
+                } else {
+                    format!("导入自 {}", imported.source)
+                },
+                total: imported.total,
+            },
             started,
             mastered,
         });
     }
+
     Ok(books)
+}
+
+/// Read a wordbook file and report what it contains, without importing it.
+///
+/// The dialog shows this so the learner can check the columns and the count
+/// before anything is written.
+#[tauri::command]
+fn preview_import(request: ImportPreviewRequest) -> AppResult<ImportPreview> {
+    let path = std::path::Path::new(&request.path);
+    let mut parsed = import::parse_file(path)?;
+
+    // When the learner overrides a column, the rows are rebuilt from the raw
+    // cells with that mapping. Re-parsing is cheap next to re-reading the
+    // file, and it keeps one code path for pairing words with glosses.
+    if let Some(word_column) = request.word_column {
+        let meaning_column = request.meaning_column;
+        let cells = import::raw_cells(path)?;
+        parsed.rows = import::remap(&cells, word_column, meaning_column);
+        parsed.word_column = word_column;
+        parsed.meaning_column = meaning_column;
+    }
+
+    let suggested_name = path
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .unwrap_or("我的词书")
+        .to_string();
+
+    Ok(ImportPreview {
+        rows: parsed.rows,
+        format: parsed.format,
+        headers: parsed.headers,
+        word_column: parsed.word_column,
+        meaning_column: parsed.meaning_column,
+        skipped: parsed.skipped,
+        warning: parsed.warning,
+        suggested_name,
+    })
+}
+
+/// Store a set of parsed rows as a new wordbook.
+#[tauri::command]
+fn import_book(
+    state: State<'_, AppState>,
+    name: String,
+    source: String,
+    format: String,
+    rows: Vec<import::ParsedRow>,
+) -> AppResult<db::CustomBook> {
+    let trimmed_name = name.trim();
+    if trimmed_name.is_empty() {
+        return Err(AppError::Vocabulary("词书需要一个名字".into()));
+    }
+    if rows.is_empty() {
+        return Err(AppError::Vocabulary("没有可导入的词条".into()));
+    }
+
+    let now = util::now_ms();
+    // The id carries the timestamp so two books with the same name do not
+    // collide, and entry ids are namespaced by it so a word in this book is
+    // tracked separately from the same word in a built-in book.
+    let book_id = format!("import-{now}");
+
+    let entries: Vec<db::CustomEntry> = rows
+        .iter()
+        .enumerate()
+        .map(|(index, row)| db::CustomEntry {
+            entry_id: format!("{book_id}-{index}"),
+            word: row.word.clone(),
+            meaning: row.meaning.clone(),
+            phonetic: row.phonetic.clone(),
+            pos: row.pos.clone(),
+        })
+        .collect();
+
+    let book = db::CustomBook {
+        id: book_id,
+        name: trimmed_name.to_string(),
+        source,
+        format,
+        imported_at: now,
+        total: entries.len(),
+    };
+
+    let mut db = state.db.lock().map_err(|_| AppError::Other("database is poisoned".into()))?;
+    db.insert_custom_book(&book, &entries)?;
+    Ok(book)
+}
+
+/// Delete an imported wordbook and its entries.
+#[tauri::command]
+fn delete_book(state: State<'_, AppState>, book_id: String) -> AppResult<()> {
+    let mut db = state.db.lock().map_err(|_| AppError::Other("database is poisoned".into()))?;
+    db.delete_custom_book(&book_id)
 }
 
 /// List the entries of a wordbook.
 #[tauri::command]
 fn book_entries(state: State<'_, AppState>, book_id: String) -> AppResult<Vec<Entry>> {
-    Ok(state.lexicon.resolve(state.lexicon.book_entries(&book_id)))
+    // A bundled book resolves from memory; anything else is looked up among
+    // the imported books.
+    let bundled = state.lexicon.book_entries(&book_id);
+    if !bundled.is_empty() {
+        return Ok(state.lexicon.resolve(bundled));
+    }
+
+    let db = state.db.lock().map_err(|_| AppError::Other("database is poisoned".into()))?;
+    Ok(db
+        .custom_entries(&book_id)?
+        .into_iter()
+        .map(|entry| Entry {
+            id: entry.entry_id,
+            word: entry.word,
+            meaning: entry.meaning,
+            pos: entry.pos,
+            phonetic: entry.phonetic,
+            example: String::new(),
+            example_zh: String::new(),
+            phrase: false,
+            etymology: String::new(),
+        })
+        .collect())
 }
 
 /// Search the whole vocabulary.
@@ -297,7 +543,8 @@ fn search_entries(state: State<'_, AppState>, query: String) -> AppResult<Vec<En
 /// into words and glosses for display.
 #[tauri::command]
 fn resolve_entries(state: State<'_, AppState>, entry_ids: Vec<String>) -> AppResult<Vec<Entry>> {
-    Ok(state.lexicon.resolve(&entry_ids))
+    let db = state.db.lock().map_err(|_| AppError::Other("database is poisoned".into()))?;
+    Ok(resolve_any(&db, &state.lexicon, &entry_ids))
 }
 
 /// Build the next study session.
@@ -315,9 +562,21 @@ fn build_session(
         for book in state.lexicon.books() {
             all.extend(state.lexicon.book_entries(&book.id).iter().cloned());
         }
+        // "全部词书" includes what the learner imported.
+        for entry in db.all_custom_entries()? {
+            all.push(entry.entry_id);
+        }
         all
     } else {
-        state.lexicon.book_entries(&request.book_id).to_vec()
+        let bundled = state.lexicon.book_entries(&request.book_id);
+        if bundled.is_empty() {
+            db.custom_entries(&request.book_id)?
+                .into_iter()
+                .map(|entry| entry.entry_id)
+                .collect()
+        } else {
+            bundled.to_vec()
+        }
     };
 
     let scope = session::Scope::parse(&request.scope);
@@ -326,10 +585,10 @@ fn build_session(
     Ok(selected
         .iter()
         .filter_map(|item| {
-            let entry = state.lexicon.entry(&item.entry_id)?;
+            let entry = resolve_one(&db, &state.lexicon, &item.entry_id)?;
             let card = cards.get(&item.entry_id);
             Some(StudyItem {
-                entry: entry.clone(),
+                entry,
                 is_review: item.is_review && card.map(|c| c.due > 0).unwrap_or(false),
                 card: card.and_then(|c| {
                     c.card
@@ -693,6 +952,9 @@ pub fn run() {
             dashboard_stats,
             list_books,
             book_entries,
+        preview_import,
+        import_book,
+        delete_book,
             search_entries,
             resolve_entries,
             build_session,

@@ -28,6 +28,10 @@ uuid = { version = "1", features = ["v4"] }
 time = { version = "0.3", features = ["formatting", "macros"] }
 ureq = { version = "2", features = ["tls"] }
 sha2 = "0.10"
+# Wordbook importing: spreadsheets and PDFs are parsed in the backend so the
+# frontend only ever receives rows.
+calamine = "0.37"
+pdf-extract = "0.7"
 # The FSRS scheduler itself lives in the frontend (src/lib/fsrs.ts) so that
 # there is exactly one implementation of the algorithm, and it can be tested
 # without a database. The backend only stores the resulting card.

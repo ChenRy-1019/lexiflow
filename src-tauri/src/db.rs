@@ -132,6 +132,31 @@ impl Db {
                 value TEXT NOT NULL
             );
 
+            -- Wordbooks the learner imported. They live beside the bundled
+            -- vocabulary rather than replacing it, so an import survives an
+            -- upgrade and the built-in books stay intact.
+            CREATE TABLE IF NOT EXISTS custom_books (
+                id          TEXT PRIMARY KEY,
+                name        TEXT NOT NULL,
+                source      TEXT NOT NULL DEFAULT "",
+                format      TEXT NOT NULL DEFAULT "",
+                imported_at INTEGER NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS custom_entries (
+                book_id     TEXT NOT NULL,
+                entry_id    TEXT NOT NULL,
+                position    INTEGER NOT NULL,
+                word        TEXT NOT NULL,
+                meaning     TEXT NOT NULL DEFAULT "",
+                phonetic    TEXT NOT NULL DEFAULT "",
+                pos         TEXT NOT NULL DEFAULT "",
+                PRIMARY KEY (book_id, entry_id)
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_custom_entries_book
+                ON custom_entries(book_id, position);
+
             CREATE TABLE IF NOT EXISTS study_sessions (
                 id          INTEGER PRIMARY KEY AUTOINCREMENT,
                 started_at  INTEGER NOT NULL,
@@ -383,6 +408,174 @@ impl Db {
         self.conn.execute("DELETE FROM settings", [])?;
         Ok(())
     }
+
+    // -------------------------------------------------------- imported books
+
+    /// Every imported wordbook, newest first.
+    pub fn custom_books(&self) -> AppResult<Vec<CustomBook>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT b.id, b.name, b.source, b.format, b.imported_at,
+                    (SELECT COUNT(*) FROM custom_entries e WHERE e.book_id = b.id)
+             FROM custom_books b
+             ORDER BY b.imported_at DESC",
+        )?;
+        let rows = stmt
+            .query_map([], |row| {
+                Ok(CustomBook {
+                    id: row.get(0)?,
+                    name: row.get(1)?,
+                    source: row.get(2)?,
+                    format: row.get(3)?,
+                    imported_at: row.get(4)?,
+                    total: row.get::<_, i64>(5)? as usize,
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(rows)
+    }
+
+    /// One imported wordbook's entries, in their original order.
+    pub fn custom_entries(&self, book_id: &str) -> AppResult<Vec<CustomEntry>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT entry_id, word, meaning, phonetic, pos
+             FROM custom_entries WHERE book_id = ?1 ORDER BY position",
+        )?;
+        let rows = stmt
+            .query_map(params![book_id], |row| {
+                Ok(CustomEntry {
+                    entry_id: row.get(0)?,
+                    word: row.get(1)?,
+                    meaning: row.get(2)?,
+                    phonetic: row.get(3)?,
+                    pos: row.get(4)?,
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(rows)
+    }
+
+    /// Store a wordbook and its entries in one transaction.
+    ///
+    /// A partial import would leave a book whose word count does not match its
+    /// contents, so the whole set is written together.
+    pub fn insert_custom_book(&mut self, book: &CustomBook, entries: &[CustomEntry]) -> AppResult<()> {
+        let tx = self.conn.transaction()?;
+        tx.execute(
+            "INSERT INTO custom_books (id, name, source, format, imported_at)
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![book.id, book.name, book.source, book.format, book.imported_at],
+        )?;
+
+        {
+            let mut stmt = tx.prepare(
+                "INSERT INTO custom_entries
+                     (book_id, entry_id, position, word, meaning, phonetic, pos)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            )?;
+            for (position, entry) in entries.iter().enumerate() {
+                stmt.execute(params![
+                    book.id,
+                    entry.entry_id,
+                    position as i64,
+                    entry.word,
+                    entry.meaning,
+                    entry.phonetic,
+                    entry.pos,
+                ])?;
+            }
+        }
+
+        tx.commit()?;
+        Ok(())
+    }
+
+    /// Remove an imported wordbook and its entries.
+    pub fn delete_custom_book(&mut self, book_id: &str) -> AppResult<()> {
+        let tx = self.conn.transaction()?;
+        tx.execute("DELETE FROM custom_entries WHERE book_id = ?1", params![book_id])?;
+        tx.execute("DELETE FROM custom_books WHERE id = ?1", params![book_id])?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    /// Look up imported entries by their entry ids.
+    ///
+    /// The notebook and the resume path store only ids, so they need to turn
+    /// an arbitrary list back into entries.
+    pub fn custom_entries_by_ids(&self, ids: &[String]) -> AppResult<Vec<CustomEntry>> {
+        if ids.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        // One placeholder per id, so a large notebook still works without
+        // building a query string out of the values themselves.
+        let placeholders = vec!["?"; ids.len()].join(",");
+        let sql = format!(
+            "SELECT entry_id, word, meaning, phonetic, pos
+             FROM custom_entries WHERE entry_id IN ({placeholders})"
+        );
+
+        let mut stmt = self.conn.prepare(&sql)?;
+        let params: Vec<&dyn rusqlite::ToSql> =
+            ids.iter().map(|id| id as &dyn rusqlite::ToSql).collect();
+        let rows = stmt
+            .query_map(params.as_slice(), |row| {
+                Ok(CustomEntry {
+                    entry_id: row.get(0)?,
+                    word: row.get(1)?,
+                    meaning: row.get(2)?,
+                    phonetic: row.get(3)?,
+                    pos: row.get(4)?,
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(rows)
+    }
+
+    /// Every imported entry id, so they can be loaded alongside the bundled
+    /// vocabulary at startup.
+    pub fn all_custom_entries(&self) -> AppResult<Vec<CustomEntry>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT entry_id, word, meaning, phonetic, pos
+             FROM custom_entries ORDER BY book_id, position",
+        )?;
+        let rows = stmt
+            .query_map([], |row| {
+                Ok(CustomEntry {
+                    entry_id: row.get(0)?,
+                    word: row.get(1)?,
+                    meaning: row.get(2)?,
+                    phonetic: row.get(3)?,
+                    pos: row.get(4)?,
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(rows)
+    }
+}
+
+/// An imported wordbook.
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CustomBook {
+    pub id: String,
+    pub name: String,
+    /// The file it came from.
+    pub source: String,
+    pub format: String,
+    pub imported_at: i64,
+    pub total: usize,
+}
+
+/// One row of an imported wordbook.
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CustomEntry {
+    pub entry_id: String,
+    pub word: String,
+    pub meaning: String,
+    pub phonetic: String,
+    pub pos: String,
 }
 
 /// Open the database in the platform's application data directory.

@@ -1,20 +1,35 @@
 import { useMemo, useState } from "react";
 
-import { fetchBookEntries, searchEntries, type BookWithStats } from "../lib/api";
+import {
+  deleteBook,
+  fetchBookEntries,
+  searchEntries,
+  type BookWithStats,
+} from "../lib/api";
+import ImportDialog from "../components/ImportDialog";
 import type { Entry } from "../lib/types";
 
 interface LibraryPageProps {
   books: BookWithStats[];
   onStart: (bookId: string) => void;
+  /** Reload the book list after an import or a delete. */
+  onRefresh: () => void;
+  notify: (message: string) => void;
 }
 
 /** The wordbook browser: pick a book, read its words, start studying. */
-export default function LibraryPage({ books, onStart }: LibraryPageProps) {
+export default function LibraryPage({
+  books,
+  onStart,
+  onRefresh,
+  notify,
+}: LibraryPageProps) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("全部");
   const [openBook, setOpenBook] = useState<string | null>(null);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [searchHits, setSearchHits] = useState<Entry[] | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   const categories = useMemo(
     () => ["全部", ...new Set(books.map((book) => book.category))],
@@ -61,6 +76,24 @@ export default function LibraryPage({ books, onStart }: LibraryPageProps) {
           </h2>
           <span className="chip chip--outline">{entries.length} 词</span>
           <div style={{ flex: 1 }} />
+          {openBook.startsWith("import-") && (
+            <button
+              type="button"
+              className="button button--danger button--small"
+              onClick={() => {
+                if (!window.confirm(`删除「${book?.name ?? "这本词书"}」及其词条？学习记录会保留。`)) {
+                  return;
+                }
+                void deleteBook(openBook).then(() => {
+                  setOpenBook(null);
+                  onRefresh();
+                  notify("词书已删除");
+                });
+              }}
+            >
+              删除词书
+            </button>
+          )}
           <button type="button" className="button button--primary" onClick={() => onStart(openBook)}>
             学习这本
           </button>
@@ -120,6 +153,9 @@ export default function LibraryPage({ books, onStart }: LibraryPageProps) {
             aria-label="搜索"
           />
         </div>
+        <button type="button" className="button" onClick={() => setImportOpen(true)}>
+          导入词书
+        </button>
         <select
           className="input"
           style={{ width: "auto" }}
@@ -194,6 +230,19 @@ export default function LibraryPage({ books, onStart }: LibraryPageProps) {
           <div className="empty__title">没有匹配的词书</div>
           <p style={{ margin: 0 }}>换个关键词或分类试试。</p>
         </div>
+      )}
+
+      {importOpen && (
+        <ImportDialog
+          onClose={() => setImportOpen(false)}
+          onImported={() => {
+            onRefresh();
+            setCategory("全部");
+            setQuery("");
+            setSearchHits(null);
+          }}
+          notify={notify}
+        />
       )}
     </div>
   );
