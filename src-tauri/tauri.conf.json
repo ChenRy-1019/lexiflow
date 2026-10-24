@@ -47,7 +47,8 @@
         "installMode": "currentUser",
         "languages": ["SimpChinese", "English"],
         "displayLanguageSelector": true,
-        "startMenuFolder": "LexiFlow"
+        "startMenuFolder": "LexiFlow",
+        "installerHooks": "installer-hooks.nsh"
       }
     }
   },

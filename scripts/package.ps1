@@ -8,30 +8,51 @@
 
 .DESCRIPTION
     One installer plus the install notes, zipped together, so the recipient
-    only needs to unpack and double-click. The zip is named after the app and
-    version so several builds can sit side by side.
+    only needs to unpack and double-click.
+
+    The installer is chosen by version, not by file order. Sorting by name
+    picked 0.1.0 over 0.2.0 because "0.1" sorts before "0.2" as text once the
+    separator differs, and the zip then carried the wrong build.
 #>
 
 $ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $PSScriptRoot
-$setup = Get-ChildItem (Join-Path $root "src-tauri\target\release\bundle\nsis") -Filter "*-setup.exe" |
+$bundleDir = Join-Path $root "src-tauri\target\release\bundle\nsis"
+
+# Parse the version out of each installer name and take the highest.
+$setup = Get-ChildItem $bundleDir -Filter "*-setup.exe" |
+    ForEach-Object {
+        if ($_.BaseName -match "_([0-9]+\.[0-9]+\.[0-9]+)_x64-setup$") {
+            [pscustomobject]@{ File = $_; Version = [version]$Matches[1] }
+        }
+    } |
+    Sort-Object Version -Descending |
     Select-Object -First 1
+
 if (-not $setup) {
     throw "No installer found; run 'npm run tauri:build' first."
 }
 
-$version = ($setup.BaseName -replace "^.*?_", "") -replace "_x64-setup$", ""
+$installer = $setup.File
+$version = $setup.Version.ToString()
+
+Write-Host "Selected installer: $($installer.Name) (version $version)"
+
 $packageDir = Join-Path $OutDir "LexiFlow-$version"
 Remove-Item $packageDir -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $packageDir | Out-Null
 
-Copy-Item $setup.FullName (Join-Path $packageDir $setup.Name)
+Copy-Item $installer.FullName (Join-Path $packageDir $installer.Name)
 
-$notes = Join-Path $root "docs\INSTALL.md"
+# The share note is plain text so it opens on a double-click, and it talks
+# about installing the file the recipient already has rather than downloading
+# from GitHub.
+$notes = Join-Path $root "docs\INSTALL-SHARE.txt"
 if (Test-Path $notes) {
-    # Rename to something a non-technical recipient will actually open.
-    Copy-Item $notes (Join-Path $packageDir "先读我-安装说明.md")
+    $noteName = [char]0x5148 + [char]0x8BFB + [char]0x6211 + "-" + `
+        [char]0x5B89 + [char]0x88C5 + [char]0x8BF4 + [char]0x660E + ".txt"
+    Copy-Item $notes (Join-Path $packageDir $noteName)
 }
 
 $zip = Join-Path $OutDir "LexiFlow-$version.zip"
