@@ -336,6 +336,50 @@ fn resolve_any(db: &Db, state_lexicon: &lexicon::Lexicon, ids: &[String]) -> Vec
     out
 }
 
+/// Search the bundled vocabulary and the imported books together.
+///
+/// The bundled search is a linear scan over a hash map, which is fine for a
+/// query the learner typed; the imported side is a small table, so a simple
+/// case-insensitive match over its rows is enough. Both are limited to the
+/// same cap so the result list stays predictable.
+fn search_any(db: &Db, state_lexicon: &lexicon::Lexicon, query: &str, limit: usize) -> Vec<Entry> {
+    let mut hits = state_lexicon.search(query, limit);
+
+    let needle = crate::util::normalise_answer(query);
+    let trimmed = query.trim();
+    if needle.is_empty() {
+        return hits;
+    }
+
+    // Imported rows are matched on the headword and the gloss, the same rule
+    // the bundled search uses.
+    if let Ok(imported) = db.all_custom_entries() {
+        for entry in imported {
+            if hits.len() >= limit {
+                break;
+            }
+            let head = crate::util::normalise_answer(&entry.word);
+            if head.contains(&needle) || entry.meaning.contains(trimmed) {
+                hits.push(Entry {
+                    id: entry.entry_id,
+                    word: entry.word,
+                    meaning: entry.meaning,
+                    pos: entry.pos,
+                    phonetic: entry.phonetic,
+                    example: String::new(),
+                    example_zh: String::new(),
+                    phrase: false,
+                    etymology: String::new(),
+                });
+            }
+        }
+    }
+
+    hits.sort_by(|a, b| a.word.cmp(&b.word));
+    hits.truncate(limit);
+    hits
+}
+
 /// Look up one entry by id across both sources.
 fn resolve_one(db: &Db, state_lexicon: &lexicon::Lexicon, id: &str) -> Option<Entry> {
     resolve_any(db, state_lexicon, &[id.to_string()]).into_iter().next()
@@ -534,7 +578,8 @@ fn book_entries(state: State<'_, AppState>, book_id: String) -> AppResult<Vec<En
 /// Search the whole vocabulary.
 #[tauri::command]
 fn search_entries(state: State<'_, AppState>, query: String) -> AppResult<Vec<Entry>> {
-    Ok(state.lexicon.search(&query, 200))
+    let db = state.db.lock().map_err(|_| AppError::Other("database is poisoned".into()))?;
+    Ok(search_any(&db, &state.lexicon, &query, 200))
 }
 
 /// Resolve a list of entry ids back into their dictionary entries.
