@@ -110,6 +110,12 @@ describe("revealing the answer", () => {
     // The answer is shown for review instead.
     expect(host.textContent).toContain("已显示答案");
 
+    // The gloss must appear too. In this mode the answer only existed as one
+    // of the options, so revealing it left nothing to check the word against.
+    const meaning = host.querySelector(".review__meaning");
+    expect(meaning).not.toBeNull();
+    expect(meaning?.textContent).toBe(entry.meaning);
+
     await act(async () => {
       root.unmount();
     });

@@ -1124,6 +1124,13 @@ export default function PracticePage({
             <p className="review__phonetic">/{current.phonetic}/</p>
           )}
 
+          {/*
+            The gloss belongs here in every mode. In the choice mode the answer
+            was shown only as part of the options, so revealing it left the
+            review card with the word and nothing to check it against.
+          */}
+          {current.meaning && <p className="review__meaning">{current.meaning}</p>}
+
           {current.etymology && (
             <p className="review__etymology">{current.etymology}</p>
           )}

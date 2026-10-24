@@ -1,0 +1,10 @@
+Show the gloss on the review card
+
+Revealing the answer left the review card showing the word and its options
+but no Chinese. In the choice mode the answer only existed inside the
+options, so once the list was behind you there was nothing to check the word
+against.
+
+The gloss now sits under the word in every mode, at body size rather than as
+a caption, since it is the thing the learner was just asked to recall. The
+reveal test asserts the gloss is present and matches the entry.

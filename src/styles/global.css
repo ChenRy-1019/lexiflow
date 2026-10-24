@@ -1928,6 +1928,18 @@ select {
   margin: 0 0 10px;
 }
 
+/*
+ * The gloss under the word. It is the thing the learner was just asked to
+ * recall, so it reads at body size rather than as a caption.
+ */
+.review__meaning {
+  font-size: 15px;
+  color: var(--text-primary);
+  line-height: 1.75;
+  margin: 0 0 14px;
+  max-width: 46em;
+}
+
 .review__etymology {
   font-size: 13px;
   color: var(--text-secondary);
