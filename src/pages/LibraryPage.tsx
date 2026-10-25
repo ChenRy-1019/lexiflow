@@ -9,6 +9,15 @@ import {
 import ImportDialog from "../components/ImportDialog";
 import type { Entry } from "../lib/types";
 
+/**
+ * How many entries to render at once.
+ *
+ * A book can hold several thousand words. Rendering them all in one pass makes
+ * the first paint slow, so the list grows by this many as the reader scrolls
+ * to the bottom.
+ */
+const PAGE = 200;
+
 interface LibraryPageProps {
   books: BookWithStats[];
   onStart: (bookId: string) => void;
@@ -30,6 +39,10 @@ export default function LibraryPage({
   const [entries, setEntries] = useState<Entry[]>([]);
   const [searchHits, setSearchHits] = useState<Entry[] | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  /** Filter text applied to the open book. */
+  const [bookQuery, setBookQuery] = useState("");
+  /** How many of the book's entries are rendered so far. */
+  const [visible, setVisible] = useState(PAGE);
 
   const categories = useMemo(
     () => ["全部", ...new Set(books.map((book) => book.category))],
@@ -60,8 +73,21 @@ export default function LibraryPage({
   const open = async (bookId: string) => {
     setOpenBook(bookId);
     setSearchHits(null);
+    setBookQuery("");
+    setVisible(PAGE);
     setEntries(await fetchBookEntries(bookId));
   };
+
+  /** The open book's entries, narrowed by the search box. */
+  const shown = useMemo(() => {
+    const needle = bookQuery.trim().toLowerCase();
+    if (!needle) return entries;
+    return entries.filter(
+      (entry) =>
+        entry.word.toLowerCase().includes(needle) ||
+        entry.meaning.toLowerCase().includes(needle),
+    );
+  }, [entries, bookQuery]);
 
   if (openBook) {
     const book = books.find((item) => item.id === openBook);
@@ -99,10 +125,35 @@ export default function LibraryPage({
           </button>
         </div>
 
+        <div className="search search--block">
+          <span className="search__icon" aria-hidden="true">
+            ⌕
+          </span>
+          <input
+            className="search__input"
+            value={bookQuery}
+            onChange={(event) => {
+              setBookQuery(event.target.value);
+              setVisible(PAGE);
+            }}
+            placeholder={`在「${book?.name ?? "这本词书"}」里查单词或释义`}
+            aria-label="在本词书中搜索"
+          />
+        </div>
+
         <div className="card">
-          <div className="card__body" style={{ maxHeight: "60vh", overflowY: "auto" }}>
+          <div
+            className="card__body booklist"
+            onScroll={(event) => {
+              // Load the next page when the reader nears the bottom.
+              const box = event.currentTarget;
+              if (box.scrollTop + box.clientHeight < box.scrollHeight - 120) return;
+              if (visible >= shown.length) return;
+              setVisible((count) => count + PAGE);
+            }}
+          >
             <div className="list">
-              {entries.slice(0, 400).map((entry) => (
+              {shown.slice(0, visible).map((entry) => (
                 <div className="list__row" key={entry.id}>
                   <div style={{ width: 190 }}>
                     <span className="word" style={{ fontSize: 15 }}>
@@ -124,10 +175,19 @@ export default function LibraryPage({
                   )}
                 </div>
               ))}
-              {entries.length > 400 && (
+              {shown.length === 0 && (
                 <div className="list__row">
                   <span className="gloss" style={{ color: "var(--ink-faint)" }}>
-                    仅显示前 400 条，共 {entries.length} 条
+                    没有匹配「{bookQuery}」的单词。
+                  </span>
+                </div>
+              )}
+
+              {shown.length > visible && (
+                <div className="list__row">
+                  <span className="gloss" style={{ color: "var(--ink-faint)" }}>
+                    已显示 {visible.toLocaleString()} 条，共 {shown.length.toLocaleString()} 条
+                    —— 继续往下滚动可加载更多
                   </span>
                 </div>
               )}

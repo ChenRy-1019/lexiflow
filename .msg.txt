@@ -1,0 +1,13 @@
+Show every word in a wordbook, and let it be searched
+
+Opening a book hid the search box and cut the list at 400 entries with a
+footer that admitted so. A 4540-word book therefore showed under a tenth of
+itself, and a reader with a word in mind had to page through to find it.
+
+The detail view now pages in 200 entries at a time as the reader scrolls,
+reports how many of the total are shown, and carries a full-width search box
+that filters by word or gloss. Filtering is in memory because the book arrives
+in one command call, so typing costs no round trip.
+
+Four DOM tests cover the search box, the paging footer, a word filter and the
+no-match message.

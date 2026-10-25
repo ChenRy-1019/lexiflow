@@ -2948,3 +2948,42 @@ select {
 .bookbar__fill--none {
   background: transparent;
 }
+
+/* ------------------------------------------------------- wordbook list */
+
+/*
+ * The list of an opened wordbook. It scrolls inside the card so the header
+ * with the search box and the buttons stays put, and it keeps a little room
+ * under the last row so the "load more" hint is reachable.
+ */
+.booklist {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-bottom: 28px;
+}
+
+/* The in-book search spans the list it filters rather than sitting in a corner. */
+.search--block {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 14px;
+  padding: 0 14px;
+  height: 40px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.search--block .search__input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+}
+
+.search--block .search__icon {
+  color: var(--text-tertiary);
+}

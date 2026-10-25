@@ -1,11 +1,11 @@
 {
-    "version":  "0.2.7",
-    "notes":  "## LexiFlow 0.2.7\n\n这一版解决「检查得到更新、却下载失败」的问题。\n\n### 之前为什么装不上\n\n更新器会先用一个小文件检查版本，那个文件能从 GitHub 读到；\n但它随后要下载的安装包，写的是 GitHub 的下载地址——在国内这个地址经常超时。\n\n所以现象是：**看到有新版本，点了「下载并安装」，却报错。**\n\n### 现在改成三源回退\n\n```\n① gitee.com（国内镜像）  ← 优先\n② ghproxy.net 代理\n③ github.com 直连        ← 兜底\n```\n\n检查更新和下载安装包都优先走 Gitee。\n\n### 实测\n\n| | 结果 |\n|---|---|\n| GitHub 直连下载安装包 | 超时 |\n| Gitee 下载同一个包 | 约 10 秒 |\n| 文件校验（SHA-256） | 与签名一致 |\n\n### 以后更新\n\n新版发布时会同时传到两个平台，你不需要做任何事。\n\n### 这一版怎么装\n\n因为 0.2.6 及之前的版本里没有 Gitee 地址，\n**这一版还需要手动安装一次**：\n\n下载 zip 解压后运行 `LexiFlow_0.2.7_x64-setup.exe`，\n或者直接运行 `release\\LexiFlow-0.2.7.zip` 里的安装程序。\n\n从 0.2.8 开始，点「下载并安装」就能自动完成了。",
-    "pub_date":  "2026-10-25T14:59:25Z",
+    "version":  "0.2.8",
+    "notes":  "## LexiFlow 0.2.8\n\n修「我的词库」里看不到全部单词的问题。\n\n### 之前\n\n打开一本词书，列表只显示 400 条，下面一行小字写着「仅显示前 400 条」。\n而且搜索框在打开词书后就不见了——想找一个具体单词，只能靠翻。\n\n4540 词的词书，等于只能看到不到十分之一。\n\n### 现在\n\n**列表不再截断**\n\n打开词书后先显示 200 条，滚到底部会自动加载更多，直到全部显示完。\n底部会实时显示「已显示 1,200 条，共 4,540 条」。\n\n**加了词书内搜索**\n\n打开词书后，上方有一整行搜索框，占满宽度。\n\n- 按单词查：输入 `bit` 直接定位\n- 按释义查：输入 `饼干` 也能找到 biscuit\n- 输入框会提示当前是哪本词书\n\n结果立刻出现，不需要等。\n\n**找不到时**\n\n会明确显示「没有匹配「xxx」的单词」，而不是一片空白。\n\n### 怎么升级\n\n软件会提示更新，点「下载并安装」即可。这次已经走国内镜像，会很快。\n学习记录、生词本、导入的词书都会保留。",
+    "pub_date":  "2026-10-25T15:31:18Z",
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTWEpncDFLTkxuRW9aRVptY2lvK2dwVlduQi9renVENkx6Vmp2UFRxNUU0OEdqYkZDd2Nwbkp5Uk0xYmdRR3pJT3lOdlo4dWpCS2xvclJ6bm9vNlYrU2swbkRVWG92bEE0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkyOTQwMzU0CWZpbGU6TGV4aUZsb3dfMC4yLjdfeDY0LXNldHVwLmV4ZQl2ZXJzaW9uOjAuMi43CjRGMnE5ZXZtR3RlOUh0c0dCdGQvSHdoUEYzK3lMUHZxL2xSdExUUEFHQS9EMnh6R1ByRnA5dUtFWUl1TS9pR3o1WXZ1MzVLeDExK3dwZ0lYeVFxVERnPT0K",
-                                             "url":  "https://gitee.com/chens-code-rythm/lexiflow/releases/download/v0.2.7/LexiFlow_0.2.7_x64-setup.exe"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTWEpncDFLTkxuRWxlTEZWK3dUUnlmYno2UnhJdWR2Qnh1dlBILzNXaFhXVFlnY3hVS3ZkdzZkcWRUTFpFR21FZFkxazZ0aXRvYW5mcFRpeHBWQWFHS3hQOTcyMGhUVVFJPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkyOTQyMjYzCWZpbGU6TGV4aUZsb3dfMC4yLjhfeDY0LXNldHVwLmV4ZQl2ZXJzaW9uOjAuMi44ClBxd0xRNEVnM3hiVkpGeXJRYlR5enlENm9XUUhVY3FVMStvd29mdkhJTkZJWVF5QmRTRy96TUx3VU10VmRTSy9KQVBkd1J4b1JJRnVwN1pqRmJJOUN3PT0K",
+                                             "url":  "https://gitee.com/chens-code-rythm/lexiflow/releases/download/v0.2.8/LexiFlow_0.2.8_x64-setup.exe"
                                          }
                   }
 }
