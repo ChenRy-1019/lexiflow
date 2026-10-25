@@ -1,0 +1,13 @@
+Restore the README screenshots
+
+The three images the README points at had been deleted during cleanup, so
+the page showed broken links.
+
+Capturing the native window proved unreliable: another window kept taking
+focus, synthetic key presses landed elsewhere, and a floating window let a
+browser behind it into the frame. The pages are rendered against the built
+stylesheet with fixed fixtures and photographed headlessly at 1280x780, which
+gives repeatable images showing the same data on every page.
+
+The PowerShell capturer is kept for manual use, and now re-asserts the
+foreground before each shot instead of once at the start.
