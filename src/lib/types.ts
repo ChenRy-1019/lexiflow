@@ -150,4 +150,10 @@ export interface DashboardStats {
   weekly: number[];
   /** Total seconds spent studying. */
   studySeconds: number;
+  /** Reviews in the last seven days, new words and repeats alike. */
+  weekReviews?: number;
+  /** Share of those reviews answered correctly, 0..100. */
+  weekAccuracy?: number;
+  /** The longest run of consecutive study days on record. */
+  bestStreak?: number;
 }

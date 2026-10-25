@@ -2128,7 +2128,7 @@ dependencies = [
 
 [[package]]
 name = "lexiflow"
-version = "0.2.5"
+version = "0.2.6"
 dependencies = [
  "calamine",
  "pdf-extract",

@@ -1,0 +1,14 @@
+Fill the statistics page with the figures it was missing
+
+Every card held one number, so most of its area was empty: `学习投入`
+showed hours and minutes side by side inside a wide card, and the per-book
+rows drew a 6px bar that a ratio of 1 in 4756 could not visibly fill.
+
+Four headline figures now each carry a note explaining what the number means.
+The weekly chart is 160px tall, the time card adds the days studied, the daily
+average and the review count, and the per-book section lists books
+lowest-mastery first with a full-width bar, a two-decimal figure below one
+percent, and an empty track when nothing has been started.
+
+The backend supplies weekReviews, weekAccuracy and estStreak, with
+longest_streak moved into session.rs so eight tests can cover it.

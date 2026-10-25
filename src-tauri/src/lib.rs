@@ -24,8 +24,8 @@ pub mod testing {
     pub use crate::db::{Card, DashboardStats, Db, NotebookItem, ReviewLog};
     pub use crate::lexicon::{Entry, Lexicon, Wordbook};
     pub use crate::session::{
-        build_session, record_review, due_count, mastered_count, started_count, PendingSession,
-        ReviewInput, ReviewOutcome, Scope, SessionItem,
+        build_session, longest_streak, record_review, due_count, mastered_count, started_count,
+        PendingSession, ReviewInput, ReviewOutcome, Scope, SessionItem,
     };
     pub use crate::db::{CustomBook, CustomEntry};
 }
@@ -243,6 +243,21 @@ fn dashboard_stats(
     let streak = streak_length(&logs, local_offset_minutes);
     let study_seconds = db.total_study_seconds()?;
 
+    // A review is a log entry; an accurate one was rated 3 or 4, which is what
+    // the practice page sends when the answer was right.
+    let week_reviews = logs.len() as i64;
+    let week_correct = logs.iter().filter(|log| log.rating >= 3).count() as i64;
+    let week_accuracy = if week_reviews > 0 {
+        (week_correct * 100 + week_reviews / 2) / week_reviews
+    } else {
+        0
+    };
+
+    // The streak only covers the recent window, so the best run needs the full
+    // log history.
+    let all_logs = db.logs_since(0)?;
+    let best_streak = session::longest_streak(&all_logs, local_offset_minutes);
+
     Ok(DashboardStats {
         today_new,
         due_count,
@@ -251,6 +266,9 @@ fn dashboard_stats(
         streak,
         weekly,
         study_seconds,
+        week_reviews,
+        week_accuracy,
+        best_streak,
     })
 }
 

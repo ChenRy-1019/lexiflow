@@ -65,6 +65,12 @@ pub struct DashboardStats {
     pub streak: i64,
     pub weekly: Vec<i64>,
     pub study_seconds: i64,
+    /// Reviews in the last seven days, new words and repeats alike.
+    pub week_reviews: i64,
+    /// Share of those reviews answered correctly, 0..100.
+    pub week_accuracy: i64,
+    /// The longest run of consecutive study days on record.
+    pub best_streak: i64,
 }
 
 /// Handle to the learner's local database.

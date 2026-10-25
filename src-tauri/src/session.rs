@@ -9,7 +9,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::db::Card;
+use crate::db::{Card, ReviewLog};
 
 /// Which slice of the vocabulary a session draws from.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -156,6 +156,42 @@ pub fn updated_counts(
     // A word counts as mastered after two independent successful reviews.
     let mastered = correct_count >= crate::MASTERY_THRESHOLD;
     (correct_count, lapse_count, mastered)
+}
+
+/// The longest run of consecutive study days on record.
+///
+/// A day counts when at least one review was answered correctly, the same rule
+/// the current streak uses. Timestamps are converted to a local day number so
+/// that "the next day" is exactly one apart, whatever the offset.
+pub fn longest_streak(logs: &[ReviewLog], local_offset_minutes: i64) -> i64 {
+    const DAY: i64 = 86_400_000;
+    let offset_ms = local_offset_minutes * 60_000;
+
+    let mut days: Vec<i64> = logs
+        .iter()
+        .filter(|log| log.rating >= 3)
+        .map(|log| (log.at + offset_ms).div_euclid(DAY))
+        .collect();
+
+    if days.is_empty() {
+        return 0;
+    }
+
+    days.sort_unstable();
+    days.dedup();
+
+    let mut best = 1i64;
+    let mut run = 1i64;
+    for pair in days.windows(2) {
+        if pair[1] - pair[0] == 1 {
+            run += 1;
+            best = best.max(run);
+        } else {
+            run = 1;
+        }
+    }
+
+    best
 }
 
 /// Count the words that are due for review right now.
