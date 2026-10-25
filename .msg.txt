@@ -1,9 +1,0 @@
-Record that publishing needs the author's approval
-
-Releases reach every installed copy, so the version number, the notes and the
-timing are the author's call. Building, signing, packaging and committing stay
-automatic; `gh release create` and anything else touching GitHub Releases
-waits for an explicit go-ahead.
-
-The rule is written down in AGENTS.md so it applies to any agent working in
-this repository, and RELEASING.md points at it from step four.
