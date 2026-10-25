@@ -1,7 +1,7 @@
 {
   "name": "lexiflow",
   "private": true,
-  "version": "0.2.2",
+  "version": "0.2.3",
   "type": "module",
   "description": "LexiFlow — 本地优先的英语词汇学习桌面应用",
   "scripts": {

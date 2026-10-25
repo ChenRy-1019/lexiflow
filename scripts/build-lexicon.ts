@@ -686,9 +686,14 @@ async function main(): Promise<void> {
   let total = 0;
 
   for (const book of books) {
-    const entries = [...buckets.get(book.id)!.values()].sort((a, b) =>
-      a.word.localeCompare(b.word),
-    );
+    // A csv-backed book keeps the order of its source file: the CET-4 core
+    // list is grouped into ten units that build on each other, and sorting it
+    // alphabetically would throw that structure away. Books drawn from ECDICT
+    // are sorted, which reads better when browsing a dictionary.
+    const values = [...buckets.get(book.id)!.values()];
+    const entries = book.csvFile
+      ? values
+      : values.sort((a, b) => a.word.localeCompare(b.word));
     outBooks[book.id] = entries;
     total += entries.length;
     meta[book.id] = {

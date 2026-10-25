@@ -1,0 +1,12 @@
+Keep the core wordbook in its source order
+
+The build sorted every book alphabetically, which is right for a dictionary
+but wrong for a themed list: the CET-4 core book is ten units that build on
+each other, and sorting turned it into an A-Z sprawl. Unit 1 should open with
+space / universe / unite, not aboard / abolish / above.
+
+A csv-backed book now keeps the order of its file; every other book is still
+sorted.
+
+Verified in the installed 0.2.3: cet4core starts space, universe, unite,
+reunite, union, and all 2327 words are present.
