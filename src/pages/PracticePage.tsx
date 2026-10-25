@@ -196,6 +196,8 @@ export default function PracticePage({
   const [speaking, setSpeaking] = useState(false);
   const [autoSpeak, setAutoSpeak] = useState(true);
   const [soundOn, setSoundOn] = useState(true);
+  /** Whether the keyboard shortcut reference is open. */
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   /** The current mode, readable from callbacks that must not depend on it. */
   const modeRef = useRef(mode);
 
@@ -722,6 +724,12 @@ export default function PracticePage({
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        // Closing the reference comes first: Escape should dismiss it rather
+        // than throw the learner out of practice.
+        if (shortcutsOpen) {
+          setShortcutsOpen(false);
+          return;
+        }
         onExit();
         return;
       }
@@ -752,12 +760,28 @@ export default function PracticePage({
         return;
       }
 
+      // After the answer is shown, 1-4 rate the word: the same keys that
+      // pick an option also record how well it was remembered, so the learner
+      // never has to reach for the mouse.
+      if (graded && !copySpelling && /^[1-4]$/.test(event.key)) {
+        event.preventDefault();
+        void commit(Number(event.key) as Rating);
+        return;
+      }
+
       // The number keys pick an option in the multiple-choice mode.
       if (mode === "choice" && /^[1-4]$/.test(event.key)) {
         event.preventDefault();
         const index = Number(event.key) - 1;
         const choice = choices[index];
         if (choice && !graded) pickChoice(choice);
+        return;
+      }
+
+      // A question mark opens the shortcut reference.
+      if (event.key === "?" || (event.key === "/" && event.shiftKey)) {
+        event.preventDefault();
+        setShortcutsOpen((open) => !open);
         return;
       }
 
@@ -771,7 +795,7 @@ export default function PracticePage({
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [graded, commit, skip, mode, choices, pickChoice, onExit, pronounceCurrent, copySpelling, finishCopy]);
+  }, [graded, commit, skip, mode, choices, pickChoice, onExit, pronounceCurrent, copySpelling, finishCopy, shortcutsOpen]);
 
   /**
    * The answer field handles Enter itself.
@@ -859,6 +883,19 @@ export default function PracticePage({
   return (
     <div className="practice">
       <div className="practice__toolbar">
+        {/* Leaving is the first thing a new learner looks for, and Escape is
+            not something they can see. */}
+        <button
+          type="button"
+          className="practice__back"
+          onClick={onExit}
+          title="返回首页（Esc）"
+          aria-label="返回首页"
+        >
+          <span aria-hidden="true">←</span>
+          <span className="practice__back-label">返回</span>
+        </button>
+
         <select
           className="input"
           value={bookId}
@@ -998,7 +1035,59 @@ export default function PracticePage({
         >
           {soundOn ? "音效 开" : "音效 关"}
         </button>
+
+        <button
+          type="button"
+          className={`chip ${shortcutsOpen ? "chip--on" : ""}`}
+          onClick={() => setShortcutsOpen((open) => !open)}
+          title="快捷键（?）"
+          aria-label="快捷键说明"
+        >
+          ?
+        </button>
       </div>
+
+      {shortcutsOpen && (
+        <div
+          className="shortcut-help"
+          role="dialog"
+          aria-label="快捷键"
+          onClick={() => setShortcutsOpen(false)}
+        >
+          <div className="shortcut-help__panel" onClick={(event) => event.stopPropagation()}>
+            <div className="shortcut-help__head">
+              <h2 className="shortcut-help__title">快捷键</h2>
+              <button
+                type="button"
+                className="shortcut-help__close"
+                onClick={() => setShortcutsOpen(false)}
+                aria-label="关闭"
+              >
+                ✕
+              </button>
+            </div>
+
+            <dl className="shortcut-help__list">
+              {[
+                ["Enter", "判定；显示答案后按 Enter 完成抄写"],
+                ["1 – 4", "选择题选选项；显示答案后评分（忘记 / 困难 / 记得 / 简单）"],
+                ["F1 / F2 / F3", "切换 拼写 / 选择 / 听写"],
+                ["Ctrl + R", "重听发音"],
+                ["Ctrl + Enter", "跳过这个单词"],
+                ["Esc", "返回首页"],
+                ["?", "显示这张表"],
+              ].map(([key, action]) => (
+                <div className="shortcut-help__row" key={key}>
+                  <dt>
+                    <kbd>{key}</kbd>
+                  </dt>
+                  <dd>{action}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </div>
+      )}
 
       <div className="practice__body">
         <div className="practice__spacer" />

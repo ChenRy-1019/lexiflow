@@ -1,0 +1,12 @@
+Add a back button, rating keys and a shortcut reference
+
+Escape was the only way out of practice and nothing on screen said so. A back
+button now sits at the start of the toolbar, labelled and titled with the key.
+
+The four rating buttons had no shortcut at all, so grading needed the mouse.
+The number keys now rate once the answer is shown, and still pick options in
+the choice mode before that. A `?` key or the toolbar chip opens a panel
+listing every shortcut; Escape closes the panel before it leaves the page.
+
+Four DOM tests cover the button, the panel, the Escape ordering and rating
+with a number key.

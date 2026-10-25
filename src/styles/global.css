@@ -1587,6 +1587,129 @@ select {
 
 /* --------------------------------------------------------------- practice */
 
+/* Leaving practice: visible, unlike the Escape key it mirrors. */
+.practice__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 10px 0 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 13px;
+  flex-shrink: 0;
+  transition: color var(--duration-fast) var(--ease),
+    border-color var(--duration-fast) var(--ease),
+    background var(--duration-fast) var(--ease);
+}
+
+.practice__back:hover {
+  color: var(--text-primary);
+  border-color: var(--gray-300);
+  background: var(--gray-100);
+}
+
+.practice__back span[aria-hidden] {
+  font-size: 15px;
+  line-height: 1;
+}
+
+/* The label is dropped first when the row runs out of room. */
+@media (max-width: 1080px) {
+  .practice__back-label {
+    display: none;
+  }
+}
+
+/* ------------------------------------------------------- shortcut help */
+
+.shortcut-help {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  background: rgb(20 24 30 / 32%);
+  padding: 24px;
+}
+
+.shortcut-help__panel {
+  width: min(520px, 100%);
+  max-height: 80vh;
+  overflow-y: auto;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 22px 24px;
+}
+
+.shortcut-help__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.shortcut-help__title {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.shortcut-help__close {
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.shortcut-help__close:hover {
+  background: var(--gray-100);
+  color: var(--text-primary);
+}
+
+.shortcut-help__list {
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.shortcut-help__row {
+  display: grid;
+  grid-template-columns: 132px 1fr;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.shortcut-help__row dt {
+  margin: 0;
+}
+
+.shortcut-help__row dd {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.shortcut-help kbd {
+  display: inline-block;
+  padding: 3px 7px;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-alt);
+  color: var(--text-primary);
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 .practice__toolbar {
   display: flex;
   gap: 8px;
