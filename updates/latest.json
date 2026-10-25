@@ -1,11 +1,11 @@
 {
-    "version":  "0.2.6",
-    "notes":  "## LexiFlow 0.2.6\n\n重做了学习统计页。\n\n### 之前的问题\n\n卡片里只有孤零零一个数字，大面积留白。「学习投入」那张卡把「2 小时 15 分」\n拆成两个数字，右边全是空的。\n\n### 现在\n\n**顶部四个数字带解释**\n\n不再是干巴巴的数值，每个下面说明它意味着什么：\n\n| 指标 | 附带信息 |\n|---|---|\n| 已学习 162 词 | 其中 7 词已掌握，155 词还在巩固 |\n| 本周新词 127 词 | 最多的一天是周六，平均每天 42 词 |\n| 本周正确率 86% | 共 214 次作答 |\n| 连续学习 3 天 | 最长记录 6 天 |\n\n**学习投入卡补满了**\n\n- 总时长放大显示\n- 下方三个小数字：这七天有学习的天数、每天平均新词、本周作答次数\n- 中间一行说明连续天数\n\n**词书掌握度改成横向进度条**\n\n原来一行一个细长的进度条，比例低时几乎看不见。现在：\n\n- 每本书名在上，进度条占满整行\n- 掌握率低于 1% 时显示两位小数，`1/4756` 会显示 `0.02%` 而不是 `0%`\n- 掌握度低的排在前面，需要关注的书先出现\n- 超过 50% 的进度条变深色\n\n**近七天图表加高**\n\n柱子从原来的一小条变成 160px 高，能看出趋势。\n\n### 新增统计\n\n后端多算了三个数：本周作答次数、本周正确率、历史最长连续天数。\n\n### 怎么升级\n\n软件会提示更新，点「下载并安装」即可。\n学习记录、生词本、导入的词书都会保留。",
-    "pub_date":  "2026-10-25T14:50:05Z",
+    "version":  "0.2.7",
+    "notes":  "## LexiFlow 0.2.7\n\n这一版解决「检查得到更新、却下载失败」的问题。\n\n### 之前为什么装不上\n\n更新器会先用一个小文件检查版本，那个文件能从 GitHub 读到；\n但它随后要下载的安装包，写的是 GitHub 的下载地址——在国内这个地址经常超时。\n\n所以现象是：**看到有新版本，点了「下载并安装」，却报错。**\n\n### 现在改成三源回退\n\n```\n① gitee.com（国内镜像）  ← 优先\n② ghproxy.net 代理\n③ github.com 直连        ← 兜底\n```\n\n检查更新和下载安装包都优先走 Gitee。\n\n### 实测\n\n| | 结果 |\n|---|---|\n| GitHub 直连下载安装包 | 超时 |\n| Gitee 下载同一个包 | 约 10 秒 |\n| 文件校验（SHA-256） | 与签名一致 |\n\n### 以后更新\n\n新版发布时会同时传到两个平台，你不需要做任何事。\n\n### 这一版怎么装\n\n因为 0.2.6 及之前的版本里没有 Gitee 地址，\n**这一版还需要手动安装一次**：\n\n下载 zip 解压后运行 `LexiFlow_0.2.7_x64-setup.exe`，\n或者直接运行 `release\\LexiFlow-0.2.7.zip` 里的安装程序。\n\n从 0.2.8 开始，点「下载并安装」就能自动完成了。",
+    "pub_date":  "2026-10-25T14:59:25Z",
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTWEpncDFLTkxuRXBmZHE5SVBQcWFQRXJtQVhkSTNnOExEM2lyTE9JZmJkVWRPR2F5QTZMTFMyYk1NMFptK3ZKdi9YcUNUL0QrNEVvOGc0WE1Za1lhTUdrS0tuTGFjNVE0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkyOTM5NzcwCWZpbGU6TGV4aUZsb3dfMC4yLjZfeDY0LXNldHVwLmV4ZQl2ZXJzaW9uOjAuMi42CllaeUZkd0o3SXUvVTZiVlY0bHVXcG9EZWxVbUJnMWlhR3l5K2h1K1pTSWpTYmJqNWxscHlZRHZPTnBHU1NGVXdXazJVVDhkNFQ0RkZBazBPVVNUekF3PT0K",
-                                             "url":  "https://gitee.com/chens-code-rythm/lexiflow/releases/download/v0.2.6/LexiFlow_0.2.6_x64-setup.exe"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTWEpncDFLTkxuRW9aRVptY2lvK2dwVlduQi9renVENkx6Vmp2UFRxNUU0OEdqYkZDd2Nwbkp5Uk0xYmdRR3pJT3lOdlo4dWpCS2xvclJ6bm9vNlYrU2swbkRVWG92bEE0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkyOTQwMzU0CWZpbGU6TGV4aUZsb3dfMC4yLjdfeDY0LXNldHVwLmV4ZQl2ZXJzaW9uOjAuMi43CjRGMnE5ZXZtR3RlOUh0c0dCdGQvSHdoUEYzK3lMUHZxL2xSdExUUEFHQS9EMnh6R1ByRnA5dUtFWUl1TS9pR3o1WXZ1MzVLeDExK3dwZ0lYeVFxVERnPT0K",
+                                             "url":  "https://gitee.com/chens-code-rythm/lexiflow/releases/download/v0.2.7/LexiFlow_0.2.7_x64-setup.exe"
                                          }
                   }
 }
