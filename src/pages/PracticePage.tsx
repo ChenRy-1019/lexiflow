@@ -884,7 +884,8 @@ export default function PracticePage({
     <div className="practice">
       <div className="practice__toolbar">
         {/* Leaving is the first thing a new learner looks for, and Escape is
-            not something they can see. */}
+            not something they can see. The label lives in the tooltip so the
+            arrow does not compete with the controls. */}
         <button
           type="button"
           className="practice__back"
@@ -892,9 +893,10 @@ export default function PracticePage({
           title="返回首页（Esc）"
           aria-label="返回首页"
         >
-          <span aria-hidden="true">←</span>
-          <span className="practice__back-label">返回</span>
+          ←
         </button>
+
+        <span className="practice__divider" aria-hidden="true" />
 
         <select
           className="input"
@@ -914,20 +916,6 @@ export default function PracticePage({
               {book.name}
             </option>
           ))}
-        </select>
-        <select
-          className="input"
-          value={scope}
-          onChange={(event) => {
-            const next = event.target.value as StudyScope;
-            setScope(next);
-            void load(bookId, next, sessionSize);
-          }}
-          aria-label="范围"
-        >
-          <option value="mix">新词 + 复习</option>
-          <option value="new">只学新词</option>
-          <option value="review">只复习</option>
         </select>
         <select
           className="input"
@@ -980,6 +968,10 @@ export default function PracticePage({
             )}
           </span>
         )}
+
+        {/* Everything from here on is an audio or display toggle, so it is
+            pushed to the far end and reads as its own group. */}
+        <span className="practice__toolbar-spacer" aria-hidden="true" />
 
         <button
           type="button"

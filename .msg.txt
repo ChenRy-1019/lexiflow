@@ -1,0 +1,12 @@
+Slim the practice toolbar
+
+The back control was a labelled button competing with the selectors for
+attention; it is now a bare arrow at the edge with the label in its tooltip.
+
+The scope selector was redundant: the scope is chosen when the session
+starts, so showing it again was clutter that could also restart the session
+by accident. It is gone, and the row now separates into wordbook / mode /
+count / progress on the left and the audio and display toggles on the right.
+
+Verified with a rendered snapshot of the toolbar at 1400px; the frontend
+suite is 105 tests.

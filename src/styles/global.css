@@ -1587,40 +1587,45 @@ select {
 
 /* --------------------------------------------------------------- practice */
 
-/* Leaving practice: visible, unlike the Escape key it mirrors. */
+/*
+ * Leaving practice: a bare arrow at the edge, mirroring the Escape key. The
+ * label is in the tooltip because a labelled button competed with the
+ * selectors for attention.
+ */
 .practice__back {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  height: 32px;
-  padding: 0 10px 0 8px;
-  border: 1px solid var(--border);
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: none;
   border-radius: var(--radius);
-  background: var(--surface);
+  background: transparent;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: 17px;
+  line-height: 1;
   flex-shrink: 0;
   transition: color var(--duration-fast) var(--ease),
-    border-color var(--duration-fast) var(--ease),
     background var(--duration-fast) var(--ease);
 }
 
 .practice__back:hover {
   color: var(--text-primary);
-  border-color: var(--gray-300);
   background: var(--gray-100);
 }
 
-.practice__back span[aria-hidden] {
-  font-size: 15px;
-  line-height: 1;
+/* A hairline keeps the arrow from reading as one of the selectors. */
+.practice__divider {
+  width: 1px;
+  align-self: stretch;
+  margin: 6px 2px;
+  background: var(--border);
+  flex-shrink: 0;
 }
 
-/* The label is dropped first when the row runs out of room. */
-@media (max-width: 1080px) {
-  .practice__back-label {
-    display: none;
-  }
+/* Pushes the audio and display toggles to the far end of the row. */
+.practice__toolbar-spacer {
+  flex: 1 1 auto;
+  min-width: 8px;
 }
 
 /* ------------------------------------------------------- shortcut help */
