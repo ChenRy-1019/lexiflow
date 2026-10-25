@@ -2,13 +2,18 @@
 
 发一个新版本只需要四步。
 
+> **第 4 步要人工确认。** AI 代理可以改版本号、写说明、构建、签名、打包，
+> 但**不能自己上传**。发布前要先说明版本号和内容，等作者同意。
+
 ## 1. 改版本号
 
-两个地方要同步改：
+三个地方要同步改：
 
 - `package.json` → `version`
 - `src-tauri/tauri.conf.json` → `version`
 - `src-tauri/Cargo.toml` → `[package] version`
+
+补丁号（修 bug、补词条）还是次版本号（加功能、加词书），见 `AGENTS.md`。
 
 ## 2. 写更新说明
 
