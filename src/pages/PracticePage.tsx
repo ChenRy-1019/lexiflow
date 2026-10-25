@@ -30,9 +30,38 @@ function normalise(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
-/** Compare a phrase ignoring spaces. */
-function spellingKey(value: string): string {
-  return normalise(value).replace(/\s+/g, "");
+/**
+ * The spellings a gloss accepts besides the headword.
+ *
+ * A cleaned headword records its variants as `（亦作 honor）`, and a learner
+ * typing one of those has answered correctly. Anything before the marker is
+ * ignored, so an ordinary gloss yields no alternatives.
+ */
+function acceptedSpellings(word: string, meaning: string): string[] {
+  const spellings = [word];
+  const match = /（?亦作\s*([^）]+)）?/.exec(meaning);
+  if (!match) return spellings;
+
+  for (const part of match[1].split(/[、,，/]/)) {
+    const candidate = part.trim();
+    // A variant is a single token; anything longer is a translated note.
+    if (candidate && /^[A-Za-z][A-Za-z\s'’-]*$/.test(candidate)) {
+      spellings.push(candidate);
+    }
+  }
+  return spellings;
+}
+
+/**
+ * Compare an answer the way a dictionary headword should be typed.
+ *
+ * Punctuation and parenthetical spelling variants are ignored, so a headword
+ * written `hono(u)r` still accepts `honour`, and `up-to-date` accepts
+ * `up to date`. Imported wordbooks often carry such markers, and requiring the
+ * learner to reproduce them exactly made those words impossible to answer.
+ */
+function answerKey(value: string): string {
+  return normalise(value).replace(/[^a-z0-9]/g, "");
 }
 
 /**
@@ -486,7 +515,11 @@ export default function PracticePage({
   /** Grade the typed answer against the expected word. */
   const submitTyped = useCallback(() => {
     if (!current || graded) return;
-    const correct = spellingKey(typed) === spellingKey(current.word);
+    // The headword, plus any alternative the gloss lists.
+    const key = answerKey(typed);
+    const correct = acceptedSpellings(current.word, current.meaning).some(
+      (spelling) => answerKey(spelling) === key,
+    );
     setGraded({
       correct,
       marks: correct ? [] : markLetters(typed, current.word),
