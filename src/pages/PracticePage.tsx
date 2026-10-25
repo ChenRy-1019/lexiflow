@@ -185,6 +185,8 @@ export default function PracticePage({
     marks: boolean[];
     expected: string;
     revealed: boolean;
+    /** The option the learner clicked, so a wrong pick can be marked. */
+    picked?: string;
   } | null>(null);
   const [copySpelling, setCopySpelling] = useState(false);
   const [notebookIds, setNotebookIds] = useState<Set<string>>(new Set());
@@ -587,6 +589,7 @@ export default function PracticePage({
         marks: [],
         expected: current.word,
         revealed: false,
+        picked: choice.entryId,
       });
       if (choice.correct) {
         playSound("success");
@@ -995,10 +998,14 @@ export default function PracticePage({
           <p className="practice__pos choice__prompt">从下面选出它的中文释义</p>
           <div className="choices">
             {choices.map((choice, index) => {
+              // The correct option goes green, and the one the learner
+              // picked goes red when it was not the answer. Comparing with
+              // `current.entryId` (the correct id) meant the red branch could
+              // never match.
               const state = graded
                 ? choice.correct
                   ? "choice--correct"
-                  : choice.entryId === current.entryId
+                  : choice.entryId === graded.picked
                     ? "choice--wrong"
                     : ""
                 : "";
@@ -1041,8 +1048,13 @@ export default function PracticePage({
           </p>
 
           <div className="practice__slots">
+            {/*
+              One slot per letter of the word. The row used to grow when the
+              typed answer was longer, which made a typo look like a longer
+              word; extra letters are trimmed from the markings instead.
+            */}
             {Array.from({
-              length: Math.max(current.word.replace(/[^a-z]/gi, "").length, typedLetters.length),
+              length: current.word.replace(/[^a-z]/gi, "").length,
             }).map((_, slotIndex) => {
               const char = typedLetters[slotIndex] ?? "";
               const isWrong = graded && !graded.correct && graded.marks[slotIndex] === false;
@@ -1084,7 +1096,9 @@ export default function PracticePage({
           </p>
 
           <div className="practice__slots">
-            {Array.from({ length: Math.max(current.word.replace(/[^a-z]/gi, "").length, typedLetters.length) }).map(
+            {/* One slot per letter, as in the dictation mode: the row must
+                show the length of the word, not of what was typed. */}
+            {Array.from({ length: current.word.replace(/[^a-z]/gi, "").length }).map(
               (_, slotIndex) => {
                 const char = typedLetters[slotIndex] ?? "";
                 const isWrong = graded && !graded.correct && graded.marks[slotIndex] === false;
