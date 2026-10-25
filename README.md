@@ -67,17 +67,21 @@ FSRS 为每个词单独维护**记忆稳定度**（stability）和**难度**（d
 
 ## 界面
 
-今日计划
+**今日计划** —— 每天打开的第一页，显示今日进度和待复习数量。
 
 ![今日计划](screenshots/01-home.png)
 
-练习页：看释义写英文，答完后按记忆程度评分
+**拼写** —— 看中文释义写英文，逐字母判定，答完后按记忆程度评分。
 
-![练习](screenshots/05-graded.png)
+![拼写模式](screenshots/02-spelling.png)
 
-词库浏览
+**词义选择** —— 四选一，选错会标出你选的那一项。
 
-![词库](screenshots/02-library.png)
+![词义选择](screenshots/03-choice.png)
+
+**听写** —— 只听发音写单词，看不到拼写提示。
+
+![听写模式](screenshots/04-dictation.png)
 
 ## 技术栈
 
