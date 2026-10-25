@@ -65,51 +65,29 @@ function answerKey(value: string): string {
 }
 
 /**
- * Mark each typed letter as right or wrong.
+ * Mark each typed letter as right or wrong, by position.
  *
- * A letter is wrong when it is not part of the best alignment between the
- * typed text and the expected answer, which is what makes "pear" vs "bear"
- * show a single wrong letter rather than a wholesale mismatch.
+ * The nth letter typed is compared with the nth letter of the word, because
+ * that is the question a learner is asking: which position did I get wrong.
+ *
+ * An earlier version aligned the two strings with the longest common
+ * subsequence, which finds the largest set of matching letters anywhere. That
+ * is the right tool for measuring similarity and the wrong one for showing a
+ * correction: typing `univices` for `universe` matched the trailing `e` and
+ * `s` out of place, so correct letters were marked red while the real mistake
+ * stayed green. Letters past the end of the word are always wrong.
  */
 function markLetters(typed: string, expected: string): boolean[] {
   const typedLetters = [...typed].filter((char) => /[a-z]/i.test(char));
   const expectedLetters = [...expected].filter((char) => /[a-z]/i.test(char));
-  const marks = typedLetters.map(() => true);
 
-  if (typedLetters.length === 0 || expectedLetters.length === 0) return marks;
-
-  // Longest common subsequence alignment.
-  const rows = typedLetters.length + 1;
-  const cols = expectedLetters.length + 1;
-  const table = Array.from({ length: rows }, () => new Array<number>(cols).fill(0));
-  for (let i = 1; i < rows; i += 1) {
-    for (let j = 1; j < cols; j += 1) {
-      const same = typedLetters[i - 1].toLowerCase() === expectedLetters[j - 1].toLowerCase();
-      table[i][j] = same
-        ? table[i - 1][j - 1] + 1
-        : Math.max(table[i - 1][j], table[i][j - 1]);
-    }
-  }
-
-  let i = typedLetters.length;
-  let j = expectedLetters.length;
-  while (i > 0 && j > 0) {
-    const same = typedLetters[i - 1].toLowerCase() === expectedLetters[j - 1].toLowerCase();
-    if (same) {
-      i -= 1;
-      j -= 1;
-    } else if (table[i - 1][j] >= table[i][j - 1]) {
-      marks[i - 1] = false;
-      i -= 1;
-    } else {
-      j -= 1;
-    }
-  }
-  while (i > 0) {
-    marks[i - 1] = false;
-    i -= 1;
-  }
-  return marks;
+  // Compare by position: the nth letter typed against the nth letter of the
+  // word. Anything past the end of the word is wrong by definition.
+  return typedLetters.map((char, index) => {
+    const target = expectedLetters[index];
+    if (target === undefined) return false;
+    return char.toLowerCase() === target.toLowerCase();
+  });
 }
 
 interface QueueItem {
