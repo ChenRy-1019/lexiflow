@@ -1,0 +1,12 @@
+Rebuild the practice toolbar as one aligned band
+
+The row mixed select padding (6px), chip padding (4px) and an icon, and
+centred everything, so controls sat at ragged heights with a gap in the middle.
+
+It is now three groups: the back arrow, the session controls, and the audio and
+ display toggles, with the first taking the space and the last pushed to the
+right edge. Every control is 30px tall with one border and type size.
+
+The duplicated toolbar rules were replaced with a single block, and the
+wordbook selector's width is capped so a long book name cannot push the toggles
+ off the row. Verified with renders at 1480px and 1000px.

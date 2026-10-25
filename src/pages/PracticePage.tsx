@@ -898,6 +898,9 @@ export default function PracticePage({
 
         <span className="practice__divider" aria-hidden="true" />
 
+        {/* What the session is: which book, which mode, how many, and how far
+            through. One cluster so the group reads as a unit. */}
+        <div className="practice__group practice__group--session">
         <select
           className="input"
           value={bookId}
@@ -969,10 +972,11 @@ export default function PracticePage({
           </span>
         )}
 
+        </div>
+
         {/* Everything from here on is an audio or display toggle, so it is
             pushed to the far end and reads as its own group. */}
-        <span className="practice__toolbar-spacer" aria-hidden="true" />
-
+        <div className="practice__group practice__group--toggles">
         <button
           type="button"
           className="chip"
@@ -1037,6 +1041,7 @@ export default function PracticePage({
         >
           ?
         </button>
+        </div>
       </div>
 
       {shortcutsOpen && (
