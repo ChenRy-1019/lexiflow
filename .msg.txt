@@ -1,0 +1,8 @@
+Show the review size in the toolbar selector
+
+A review is sized by how many words FSRS says are due, so the count is
+rarely one of the 10/20/30/50 presets. The select then had no matching
+option and rendered blank, making the session size look unset.
+
+The current size is added to the options when it is not already one of
+ them, so a 120-word review reads as 120 词.

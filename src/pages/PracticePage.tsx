@@ -163,6 +163,19 @@ export default function PracticePage({
   const [scope, setScope] = useState<StudyScope>(initialScope);
   const [bookId, setBookId] = useState<string>(initialBookId);
   const [sessionSize, setSessionSize] = useState(initialLimit);
+
+  /**
+   * The counts offered in the toolbar.
+   *
+   * A review takes its size from how many words are due, which is rarely a
+   * round number. The current value is added to the list so the select shows
+   * the real size rather than appearing empty.
+   */
+  const sizeChoices = useMemo(() => {
+    const presets = [10, 20, 30, 50];
+    if (presets.includes(sessionSize)) return presets;
+    return [...presets, sessionSize].sort((a, b) => a - b);
+  }, [sessionSize]);
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [index, setIndex] = useState(0);
   const [typed, setTyped] = useState("");
@@ -886,7 +899,12 @@ export default function PracticePage({
           aria-label="本轮数量"
           title="改数量后会重新开始一轮"
         >
-          {[10, 20, 30, 50].map((size) => (
+          {/*
+            A review is sized by the number of words FSRS says are due, which
+            is often not one of the round presets. Include the current size so
+            the select shows it instead of going blank.
+          */}
+          {sizeChoices.map((size) => (
             <option key={size} value={size}>
               {size} 词
             </option>
