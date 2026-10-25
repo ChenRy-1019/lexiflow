@@ -1,0 +1,15 @@
+Ship the CET-4 core wordbook
+
+Adds 刘晓燕英语四级核心词汇 as a bundled book: 2327 entries with phonetic and
+Chinese gloss, taken from the Word document the learner supplied.
+
+The lexicon build gains a csvFile source, since every other book is
+selected out of ECDICT by tag or frequency and this one comes from its own
+list. Repeats across units are merged rather than dropped: content appears
+as both "n. 内容" and "adj. 满意的", and discarding either would lose a sense.
+
+The book carries its provenance in the description and in DATA_SOURCES, and
+the build treats it as any other book, so it appears without an import.
+
+Verified: the installed lexicon holds 11 books / 54850 entries with no empty
+gloss, and the app starts normally.

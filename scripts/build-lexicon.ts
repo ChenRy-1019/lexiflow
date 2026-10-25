@@ -73,6 +73,11 @@ interface BookSpec {
   phraseOnly?: boolean;
   /** The book is filled from the root file rather than the dictionary. */
   rootsOnly?: boolean;
+  /**
+   * The book is filled from a CSV in `data/wordbooks` rather than from
+   * ECDICT. The file has the columns 单词 / 释义 / 音标.
+   */
+  csvFile?: string;
 }
 
 /**
@@ -103,6 +108,16 @@ const BOOKS: BookSpec[] = [
     short: "CET-6",
     description: "大学英语六级考试大纲要求掌握的核心词汇。",
     tags: ["zk", "cet6"],
+  },
+  {
+    id: "cet4core",
+    name: "刘晓燕英语四级核心词汇",
+    category: "国内考试",
+    short: "CET-4 核心",
+    description:
+      "按主题分 10 个单元的核心词表，共 2327 词。内容整理自刘晓燕《英语四级核心词》，" +
+      "版权归原作者所有，仅供个人学习；如需系统学习建议购买原书。",
+    csvFile: "cet4-core.csv",
   },
   {
     id: "kaoyan",
@@ -557,8 +572,10 @@ async function main(): Promise<void> {
     for (const book of books) {
       const bucket = buckets.get(book.id)!;
 
-      // The roots book is filled from the root file afterwards.
+      // The roots book is filled from the root file afterwards, and a
+      // csv-backed book from its own file.
       if (book.rootsOnly) continue;
+      if (book.csvFile) continue;
 
       if (book.phraseOnly && !phrase) continue;
       if (book.tags && book.tags.length > 0) {
@@ -593,6 +610,43 @@ async function main(): Promise<void> {
   }
 
   console.log(`  · scanned ${scanned} rows, matched ${matched} entries`);
+
+  // Fill each csv-backed book from its file.
+  for (const book of books) {
+    if (!book.csvFile) continue;
+    const bucket = buckets.get(book.id)!;
+    const file = resolve(ROOT, "data", "wordbooks", book.csvFile);
+    if (!existsSync(file)) {
+      console.warn(`  ! ${book.csvFile} is missing, ${book.id} will be empty`);
+      continue;
+    }
+
+    const rows = readFileSync(file, "utf-8").replace(/^\uFEFF/, "").split(/\r?\n/);
+    // The first line is the header: 单词,释义,音标
+    for (const line of rows.slice(1)) {
+      if (!line.trim()) continue;
+      const [word, meaning, phonetic] = splitCsvLine(line).map((cell) => cell.trim());
+      if (!word || !meaning) continue;
+
+      const id = entryId(book.id, word);
+      if (bucket.has(id)) continue;
+
+      // A leading part of speech marker stays in the gloss, which is how the
+      // source writes it; the practice page shows the whole string.
+      bucket.set(id, {
+        id,
+        word,
+        meaning: foldMeaning(meaning),
+        pos: "",
+        phonetic: (phonetic ?? "").replace(/^\/|\/$/g, "").trim(),
+        example: "",
+        exampleZh: "",
+        phrase: isPhrase(word),
+        etymology: "",
+      });
+    }
+    console.log(`  · ${book.id}: ${bucket.size} entries from ${book.csvFile}`);
+  }
 
   // Fill the roots book from the root file.
   const rootsBucket = buckets.get("roots")!;

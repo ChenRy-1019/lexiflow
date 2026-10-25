@@ -86,6 +86,22 @@ Windows 自带的英文声音（美式 `Microsoft Zira Desktop`、英式
 上游数据集不包含在本仓库中（见 `.gitignore`），首次执行 `npm run lexicon:build`
 时会自动下载到 `data/_upstream/`。
 
+## 内置的《英语四级核心词》词表
+
+`data/wordbooks/cet4-core.csv` 收录了 **2327 个词条**，由一份 Word 文档整理而来，
+书名《英语四级核心词》，作者刘晓燕。
+
+**版权归原作者与出版方所有。** 本项目引用它，是为了让使用者能按自己手上那本书
+的顺序复习，用于个人学习。
+
+如果你要基于本项目管理自己的发行版，请自行评估这一部分的合规性。比较稳妥的做法有：
+
+- 从 `scripts/build-lexicon.ts` 的 `BOOKS` 里移除 `cet4core` 这一项，
+  重新执行 `npm run lexicon:build`，即可把它从内置词库中去掉；
+- 或者只保留词表（单词本身属于事实性信息），释义改用 ECDICT 中已有的条目。
+
+如需系统学习，建议购买原书。
+
 ## 与 Vocabulary Studio 的关系
 
 本项目参考了 [Frinds-A/Vocabulary_Studio](https://github.com/Frinds-A/Vocabulary_Studio)
