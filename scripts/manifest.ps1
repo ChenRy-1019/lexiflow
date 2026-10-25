@@ -1,7 +1,11 @@
-﻿param(
+param(
     [Parameter(Mandatory = $true)][string]$Repo,
     [string]$Tag = "",
-    [string]$OutDir = "release"
+    [string]$OutDir = "release",
+    # Where the installer is hosted. A mirror such as Gitee is used for the
+    # download because the upstream GitHub asset URL times out for learners in
+    # mainland China, even though the manifest itself is reachable.
+    [string]$BaseUrl = ""
 )
 
 # Build the update manifest Tauri's updater reads.
@@ -53,7 +57,12 @@ $notes = if (Test-Path $notesPath) {
     ""
 }
 
-$url = "https://github.com/$Repo/releases/download/$Tag/$($setup.Name)"
+if ($BaseUrl) {
+    # A mirror serves the same file under its own host.
+    $url = "$($BaseUrl.TrimEnd('/'))/$($setup.Name)"
+} else {
+    $url = "https://github.com/$Repo/releases/download/$Tag/$($setup.Name)"
+}
 
 $manifest = [ordered]@{
     version   = $version
