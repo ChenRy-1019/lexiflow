@@ -1,0 +1,14 @@
+Enter finishes the copy step instead of grading
+
+Revealing the answer sets `graded`, so both Enter handlers saw a graded
+answer and called `commit`. The learner typed the word to copy it, pressed
+Enter out of habit, and jumped to the next word — the blind retry the step
+exists for never happened. Clicking the button was unaffected, which is why
+the flow looked correct in the code.
+
+Enter now calls `finishCopy` while the copy step is open, in the field
+handler and in the global listener, and the listener's dependencies include
+`copySpelling` so it does not read a stale value.
+
+A DOM test presses Enter mid-copy and asserts the same word returns with an
+empty field.

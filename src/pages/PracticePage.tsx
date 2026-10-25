@@ -737,7 +737,11 @@ export default function PracticePage({
           return;
         }
         if (graded) {
-          void commit(graded.correct ? 3 : 1);
+          if (copySpelling) {
+            finishCopy();
+          } else {
+            void commit(graded.correct ? 3 : 1);
+          }
           return;
         }
         if (mode === "choice" && choices.length > 0) {
@@ -767,7 +771,7 @@ export default function PracticePage({
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [graded, commit, skip, mode, choices, pickChoice, onExit, pronounceCurrent]);
+  }, [graded, commit, skip, mode, choices, pickChoice, onExit, pronounceCurrent, copySpelling, finishCopy]);
 
   /**
    * The answer field handles Enter itself.
@@ -793,7 +797,14 @@ export default function PracticePage({
     event.preventDefault();
     handledEnter.current = true;
     if (graded) {
-      void commit(graded.correct ? 3 : 1);
+      // During the copy step the answer is on screen, so Enter finishes the
+      // copy instead of grading: grading here would jump to the next word and
+      // skip the blind retry the step exists for.
+      if (copySpelling) {
+        finishCopy();
+      } else {
+        void commit(graded.correct ? 3 : 1);
+      }
     } else {
       submitTyped();
     }
