@@ -193,6 +193,27 @@ export default function App() {
     setPage("practice");
   }, []);
 
+  /**
+   * Review the words that are already scheduled.
+   *
+   * This skips the wordbook picker: a review draws from every book the learner
+   * has started, and the count is already known from the badge. The session
+   * size becomes the number of due words, so one pass clears the backlog.
+   */
+  const startReview = useCallback(() => {
+    const due = Math.max(1, stats.dueCount);
+    setStartOptions({
+      bookId: "",
+      mode: startOptions.mode,
+      scope: "review",
+      limit: due,
+    });
+    setResumeSession(false);
+    setStartDialogOpen(false);
+    setImmersive(true);
+    setPage("practice");
+  }, [stats.dueCount, startOptions.mode]);
+
   const content = useMemo(() => {
     switch (page) {
       case "home":
@@ -373,7 +394,12 @@ export default function App() {
             </div>
             <div className="topbar__spacer" />
             {stats.dueCount > 0 && page !== "practice" && (
-              <button type="button" className="chip chip--warning" onClick={() => openStartDialog()}>
+              <button
+                type="button"
+                className="chip chip--warning"
+                onClick={startReview}
+                title="直接复习到期的单词"
+              >
                 待复习 {stats.dueCount}
               </button>
             )}

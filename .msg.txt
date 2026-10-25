@@ -1,0 +1,11 @@
+Start a review straight from the due-count badge
+
+The badge reported how many words were due, but clicking it opened the
+wordbook picker. A review draws from every book the learner has started, so
+there is nothing to pick; the detour made the badge look broken.
+
+It now enters practice with the review scope across all books, sized to the
+backlog so one pass clears it.
+
+A DOM test clicks the badge and asserts the session is requested with an empty
+book id, the review scope, and the due count, with no dialog on screen.
