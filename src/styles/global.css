@@ -840,13 +840,56 @@ select {
  * a small window, while `wrap` alone broke the row in a medium one; letting
  * it shrink first and wrap last gives the same layout in both.
  */
+/*
+ * One line by default. The controls shrink through the container queries
+ * below, so wrapping only happens in a genuinely narrow column; leaving it
+ * permissive is what let a restored window stack the scope select while a
+ * maximised one kept it inline.
+ */
+/*
+ * One line, with the scope select as the only column that gives up width.
+ * `minmax(0, 1fr)` on the last column means a long label shrinks that column
+ * instead of pushing the row onto a second line.
+ */
 .plan__actions {
-  display: flex;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  grid-template-columns: auto auto auto minmax(0, 1fr);
   gap: 10px;
   align-items: center;
-  flex-wrap: wrap;
   margin-top: auto;
   min-width: 0;
+}
+
+/* The two buttons and the switch keep their text, but may shrink a little
+   before the scope select has to give up more room. */
+.plan__actions > .button--large,
+.plan__actions > .button--continue {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan__actions > .plan__modes {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.plan__actions > .plan__scope {
+  min-width: 0;
+  width: 100%;
+}
+
+/* The buttons and the switch never shrink below their text; only the scope
+   select gives up width, and only after the queries have tightened it. */
+.plan__actions > * {
+  flex-shrink: 0;
+}
+
+.plan__actions > .plan__scope {
+  flex-shrink: 1;
 }
 
 .plan__modes {
@@ -948,23 +991,29 @@ select {
  * shrinks and the least important control (the scope select) gives up the
  * most width, so the buttons keep their height and stay on one line.
  */
-@container (max-width: 520px) {
+/*
+ * The action row shrinks in steps rather than jumping straight to a second
+ * line. Measured widths: the controls need about 640px at full size, 560px
+ * with tighter padding, and 500px with the scope select at its minimum.
+ */
+/*
+ * The action row shrinks in steps so it never wraps while the card can still
+ * hold it. Measured: the controls take 558px at full size, and the main column
+ * is 518px when the card is 760px wide — the difference is what pushed the
+ * scope select onto a second line.
+ */
+/*
+ * These query the main column, which is what the row actually has to fit into.
+ * Measured: the controls need 558px at full size, so they start tightening just
+ * below that and stay on one line down to about 430px.
+ */
+/*
+ * Below this width the labels are shortened so the row still fits; the grid
+ * keeps it on one line, and the scope select absorbs what is left.
+ */
+@media (max-width: 980px) {
   .plan__actions {
-    gap: 6px;
-  }
-
-  /* The controls keep their height; the switches wrap as a group. */
-  .plan__modes {
-    height: 40px;
-  }
-
-  .button--large {
-    padding: 0 16px;
-    font-size: 14px;
-  }
-
-  .button--continue {
-    padding: 0 12px;
+    gap: 8px;
   }
 
   .mode-pill {
@@ -973,10 +1022,37 @@ select {
   }
 
   .plan__scope {
-    min-width: 88px;
-    max-width: 96px;
-    padding: 0 6px;
+    min-width: 84px;
     font-size: 12px;
+  }
+}
+
+/*
+ * A restored window leaves the column about 440px, which is 20px short of the
+ * full-size controls. Trimming the buttons' side padding pays for it without
+ * changing the text, so the row stays on one line and inside the card.
+ */
+@media (max-width: 860px) {
+  .plan__actions {
+    gap: 7px;
+  }
+
+  .plan__actions > .button--large {
+    padding: 0 14px;
+    font-size: 14px;
+  }
+
+  .plan__actions > .button--continue {
+    padding: 0 11px;
+  }
+
+  .mode-pill {
+    padding: 0 7px;
+  }
+
+  .plan__scope {
+    min-width: 74px;
+    font-size: 11px;
   }
 }
 

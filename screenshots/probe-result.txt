@@ -1,0 +1,51 @@
+﻿msedge.exe : [30084:32016:1025/180505.413:ERROR:chrome\browser\importer\edge_china_browsers\edge_qqbrowser_importer_uti
+ls_win.cc:165] QQBrowser user data path not found.
+所在位置 行:36 字符: 236
++ ... esult.txt"; & $edge --headless=new --disable-gpu --window-size=1600,1 ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([30084:32016:10...path not found.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>body{margin:0}iframe{border:0;width:var(--w);height:900px}</style><title>done</title></head>
+<body><pre id="out">640: no row
+720: no row
+760: no row
+800: no row
+860: no row
+900: no row
+1000: no row
+1200: no row
+1400: no row</pre>
+<iframe id="f" src="file:///E:/develop/deepseek harness/LexiFlow/screenshots/measure.html" style="width: 1400px;"></iframe>
+<script>
+const widths = [640, 720, 760, 800, 860, 900, 1000, 1200, 1400];
+const f = document.getElementById('f');
+const out = document.getElementById('out');
+const lines = [];
+let i = 0;
+function step() {
+  if (i >= widths.length) { out.textContent = lines.join('\n'); document.title = 'done'; return; }
+  const w = widths[i++];
+  f.style.width = w + 'px';
+  f.onload = null;
+  setTimeout(() => {
+    const doc = f.contentDocument;
+    const row = doc && doc.querySelector('.plan__actions');
+    const card = doc && doc.querySelector('.plan');
+    if (!row) { lines.push(w + ': no row'); step(); return; }
+    const kids = [...row.children];
+    const tops = kids.map(k => Math.round(k.getBoundingClientRect().top));
+    const distinct = new Set(tops).size;
+    const total = kids.reduce((s, k) => s + k.getBoundingClientRect().width, 0)
+                  + (kids.length - 1) * 10;
+    lines.push(w + ': card=' + Math.round(card.getBoundingClientRect().width) +
+               ' row=' + Math.round(row.getBoundingClientRect().width) +
+               ' lines=' + distinct + ' needed=' + Math.round(total));
+    step();
+  }, 350);
+}
+f.src = 'file:///E:/develop/deepseek harness/LexiFlow/screenshots/measure.html';
+f.onload = () => step();
+</script></body></html>
