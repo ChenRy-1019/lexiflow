@@ -1,0 +1,13 @@
+Raise the custom session size to 6000
+
+The custom-count field capped at 200. A CET-4 book holds 4756 words and a
+postgraduate one 6221, so a learner who wanted a long run was stuck at a
+twentieth of the book.
+
+The ceiling is now 6000, and the field widened from 54px to 76px so a
+four-digit value is not clipped mid-number. The backend had no cap of its own —
+it truncates to whatever the dialog sends.
+
+Two DOM tests assert the new maximum is applied and that a value past it is not
+accepted. The dialog's settings mock now returns a saved book, because the
+submit button stays disabled without one and the test could not reach it.

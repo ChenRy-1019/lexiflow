@@ -6,7 +6,7 @@ import type { StudyMode, StudyScope } from "../lib/types";
 
 /** The bounds a custom session size must fall within. */
 const MIN_SIZE = 1;
-const MAX_SIZE = 200;
+const MAX_SIZE = 6000;
 
 /** The three practice modes. */
 const MODES: Array<{ id: StudyMode; label: string; hint: string }> = [

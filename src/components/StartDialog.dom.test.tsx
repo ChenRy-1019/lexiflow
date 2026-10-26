@@ -11,12 +11,16 @@
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../lib/api", () => ({
-  fetchSetting: vi.fn().mockResolvedValue(null),
+  // The dialog only enables its submit button once a book is chosen, and the
+  // book comes from the saved settings, so the mock has to return one.
+  fetchSetting: vi.fn((key: string) =>
+    Promise.resolve(key === "lastBookId" ? "cet4" : null),
+  ),
   saveSetting: vi.fn().mockResolvedValue(undefined),
 }));
 
 /** Mount the dialog with a given goal. */
-async function mount(goal: number) {
+async function mount(goal: number, onStart?: (choice: { limit?: number }) => void) {
   const { createRoot } = await import("react-dom/client");
   const { createElement, act } = await import("react");
   const { default: StartDialog } = await import("./StartDialog");
@@ -46,7 +50,7 @@ async function mount(goal: number) {
         defaultMode: "spelling",
         defaultScope: "mix",
         onCancel: () => undefined,
-        onStart: () => undefined,
+        onStart: onStart ?? (() => undefined),
       }),
     );
   });
@@ -128,6 +132,88 @@ describe("StartDialog size options", () => {
     // Still four tiles: the field replaces the label inside the last one.
     expect(host.querySelectorAll(".size-picker > *")).toHaveLength(4);
     expect(host.querySelector(".size-entry__input")).not.toBeNull();
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it("accepts a custom count in the thousands", async () => {
+    let chosen: { limit?: number } | null = null;
+    const { host, root, act } = await mount(20, (choice) => {
+      chosen = choice;
+    });
+
+    const entry = host.querySelector(".size-picker__item--entry");
+    entry?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    });
+
+    const field = host.querySelector(".size-entry__input") as HTMLInputElement;
+    // The field used to cap at 200, which a long wordbook outgrows.
+    expect(Number(field.getAttribute("max"))).toBe(6000);
+
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+    await act(async () => {
+      setter?.call(field, "6000");
+      field.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+    // The submit button stays disabled until the saved settings have loaded,
+    // so wait for that before clicking.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 60));
+    });
+    await act(async () => {
+      const start = [...host.querySelectorAll("button")].find((button) =>
+        button.textContent?.includes("开始学习"),
+      ) as HTMLButtonElement | undefined;
+      expect(start?.disabled).toBe(false);
+      start?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(chosen?.limit).toBe(6000);
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it("refuses a count above the ceiling", async () => {
+    let chosen: { limit?: number } | null = null;
+    const { host, root, act } = await mount(20, (choice) => {
+      chosen = choice;
+    });
+
+    const entry = host.querySelector(".size-picker__item--entry");
+    entry?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    });
+
+    const field = host.querySelector(".size-entry__input") as HTMLInputElement;
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+    // A value past the ceiling is kept in the field while editing but must not
+    // become the chosen size.
+    await act(async () => {
+      setter?.call(field, "6001");
+      field.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => {
+      field.dispatchEvent(new Event("blur", { bubbles: true }));
+    });
+
+    await act(async () => {
+      const start = [...host.querySelectorAll("button")].find((button) =>
+        button.textContent?.includes("开始学习"),
+      );
+      start?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(chosen?.limit).not.toBe(6001);
 
     await act(async () => {
       root.unmount();
