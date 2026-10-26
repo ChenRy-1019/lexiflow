@@ -28,6 +28,7 @@ pub mod testing {
         PendingSession, ReviewInput, ReviewOutcome, Scope, SessionItem,
     };
     pub use crate::db::{CustomBook, CustomEntry};
+    pub use crate::{search_any, resolve_one};
 }
 
 use std::collections::HashMap;
@@ -360,7 +361,7 @@ fn resolve_any(db: &Db, state_lexicon: &lexicon::Lexicon, ids: &[String]) -> Vec
 /// query the learner typed; the imported side is a small table, so a simple
 /// case-insensitive match over its rows is enough. Both are limited to the
 /// same cap so the result list stays predictable.
-fn search_any(db: &Db, state_lexicon: &lexicon::Lexicon, query: &str, limit: usize) -> Vec<Entry> {
+pub fn search_any(db: &Db, state_lexicon: &lexicon::Lexicon, query: &str, limit: usize) -> Vec<Entry> {
     let mut hits = state_lexicon.search(query, limit);
 
     let needle = crate::util::normalise_answer(query);
@@ -393,13 +394,20 @@ fn search_any(db: &Db, state_lexicon: &lexicon::Lexicon, query: &str, limit: usi
         }
     }
 
-    hits.sort_by(|a, b| a.word.cmp(&b.word));
+    hits.sort_by(|a, b| a.word.to_lowercase().cmp(&b.word.to_lowercase()));
+
+    // A word lives in every wordbook that lists it, so the same headword can
+    // arrive several times. Keep the first of each, which is the bundled copy
+    // with its fuller gloss, and drop the repeats.
+    let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+    hits.retain(|entry| seen.insert(entry.word.to_lowercase()));
+
     hits.truncate(limit);
     hits
 }
 
 /// Look up one entry by id across both sources.
-fn resolve_one(db: &Db, state_lexicon: &lexicon::Lexicon, id: &str) -> Option<Entry> {
+pub fn resolve_one(db: &Db, state_lexicon: &lexicon::Lexicon, id: &str) -> Option<Entry> {
     resolve_any(db, state_lexicon, &[id.to_string()]).into_iter().next()
 }
 

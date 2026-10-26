@@ -1,11 +1,11 @@
 {
-    "version":  "0.2.8",
-    "notes":  "## LexiFlow 0.2.8\n\n修「我的词库」里看不到全部单词的问题。\n\n### 之前\n\n打开一本词书，列表只显示 400 条，下面一行小字写着「仅显示前 400 条」。\n而且搜索框在打开词书后就不见了——想找一个具体单词，只能靠翻。\n\n4540 词的词书，等于只能看到不到十分之一。\n\n### 现在\n\n**列表不再截断**\n\n打开词书后先显示 200 条，滚到底部会自动加载更多，直到全部显示完。\n底部会实时显示「已显示 1,200 条，共 4,540 条」。\n\n**加了词书内搜索**\n\n打开词书后，上方有一整行搜索框，占满宽度。\n\n- 按单词查：输入 `bit` 直接定位\n- 按释义查：输入 `饼干` 也能找到 biscuit\n- 输入框会提示当前是哪本词书\n\n结果立刻出现，不需要等。\n\n**找不到时**\n\n会明确显示「没有匹配「xxx」的单词」，而不是一片空白。\n\n### 怎么升级\n\n软件会提示更新，点「下载并安装」即可。这次已经走国内镜像，会很快。\n学习记录、生词本、导入的词书都会保留。",
-    "pub_date":  "2026-10-25T15:31:18Z",
+    "version":  "0.2.9",
+    "notes":  "## LexiFlow 0.2.9\n\n修搜索结果重复的问题。\n\n### 之前\n\n搜「拒绝」会列出 67 条，其中 `denial` 出现 5 次、`abhor` 出现 2 次——\n因为同一个单词同时属于好几本词书（四级、六级、考研、雅思、高频），\n而搜索把每一本里的那一份都列了出来。\n\n### 现在\n\n**同一个单词只出现一次。**\n\n实测：搜「拒绝」从 67 条变成 20 条，去掉 47 条重复。\n\n保留的是第一次出现的那份释义——各词书里同一个词的释义通常完全相同，\n所以内容没有变化，只是不再重复刷屏。\n\n去重不区分大小写，`Denial` 和 `denial` 算同一个词。\n\n### 怎么升级\n\n软件会提示更新，点「下载并安装」即可。\n学习记录、生词本、导入的词书都会保留。",
+    "pub_date":  "2026-10-26T07:22:24Z",
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTWEpncDFLTkxuRWxlTEZWK3dUUnlmYno2UnhJdWR2Qnh1dlBILzNXaFhXVFlnY3hVS3ZkdzZkcWRUTFpFR21FZFkxazZ0aXRvYW5mcFRpeHBWQWFHS3hQOTcyMGhUVVFJPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkyOTQyMjYzCWZpbGU6TGV4aUZsb3dfMC4yLjhfeDY0LXNldHVwLmV4ZQl2ZXJzaW9uOjAuMi44ClBxd0xRNEVnM3hiVkpGeXJRYlR5enlENm9XUUhVY3FVMStvd29mdkhJTkZJWVF5QmRTRy96TUx3VU10VmRTSy9KQVBkd1J4b1JJRnVwN1pqRmJJOUN3PT0K",
-                                             "url":  "https://gitee.com/chens-code-rythm/lexiflow/releases/download/v0.2.8/LexiFlow_0.2.8_x64-setup.exe"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTWEpncDFLTkxuRW1POVZHRXAyanpzcXRWMzZQenMweFZqdjNTMkdmZTIvV2pzSGZGYzIwZkpsbk0xMnZGdm14L2dibXIrNmwzN2VJcDZKM1g5K3NxajlSUzA1MVFMOHdnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkyOTk5MzI2CWZpbGU6TGV4aUZsb3dfMC4yLjlfeDY0LXNldHVwLmV4ZQl2ZXJzaW9uOjAuMi45CmJtTC8vcjlybElrRm5rdkdUR1RwZDMyem5CSDh1N0hRcGZDby9UcFNGWnFyd2R5NHMzdkFjVG1INUJza1pseHI2VkM0UUE4ZjU0REtndUVvKzl4VEFBPT0K",
+                                             "url":  "https://gitee.com/chens-code-rythm/lexiflow/releases/download/v0.2.9/LexiFlow_0.2.9_x64-setup.exe"
                                          }
                   }
 }
