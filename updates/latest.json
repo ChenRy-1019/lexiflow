@@ -1,11 +1,11 @@
 {
-    "version":  "0.3.0",
-    "notes":  "## LexiFlow 0.3.0\n\n自定义学习数量放宽到 6000。\n\n### 之前\n\n「开始学习」里的自定义数量输入框，上限是 200。\n\n四六级、考研这类词书动辄四五千词，想一次多学一些就不够了。\n\n### 现在\n\n**上限从 200 提到 6000。**\n\n输入框也加宽了，从 54px 到 76px，四位数能完整显示，不会被截断成两位。\n\n### 怎么升级\n\n软件会提示更新，点「下载并安装」即可。\n学习记录、生词本、导入的词书都会保留。",
-    "pub_date":  "2026-10-26T08:53:20Z",
+    "version":  "0.3.1",
+    "notes":  "## LexiFlow 0.3.1\n\n自定义学习数量的上限改成跟着所选词书走。\n\n### 之前\n\n上限是写死的数字。0.3.0 提到 6000，但六百这个数本身没有依据——\n换一本词书，它还是 6000。\n\n### 现在\n\n**上限 = 你选的那本词书的词数。**\n\n| 词书 | 上限 |\n|---|---|\n| 刘晓燕英语四级核心词汇 | 2,327 |\n| 大学英语四级词汇 | 4,756 |\n| 大学英语六级词汇 | 6,455 |\n| 托福核心词汇 | 6,974 |\n\n输入框旁边会直接标出「最多 2,327」这样的提示，不用猜。\n\n**换词书时会自动调整。**\n\n选了 6,974 词的托福，填了 6,000；再换成 2,327 词的词书，\n数字会自动降到 2,327，不会留下一堆学不完的词。\n\n**「只复习」不设上限。**\n\n复习的数量由 FSRS 按到期情况决定，不由你填，所以这时候上限会放开。\n\n### 怎么升级\n\n软件会提示更新，点「下载并安装」即可。\n学习记录、生词本、导入的词书都会保留。",
+    "pub_date":  "2026-10-26T10:00:14Z",
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTWEpncDFLTkxuRXRJc01aRTRaU2NTcUpoSUtESndHT2JBUkVzN2dPU3VsZXl2cDFESFphczZuVkQ4MGlyMi9mbEcxclEreFVKcGVHWnFmWTluckpDY1RWbWFKVFZaSHdZPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkzMDA0Nzg0CWZpbGU6TGV4aUZsb3dfMC4zLjBfeDY0LXNldHVwLmV4ZQl2ZXJzaW9uOjAuMy4wCmlibmtncUVkcFJhQVp0VGxRL2JPSXJNanZtNUwxL0ZOV2RPeU1PZXVZZ1g5bnU5Y2ZQUHdnaEtSWEozS25VWkkvdEllLzByVFlIRnR4RFFsVmF3bEFnPT0K",
-                                             "url":  "https://gitee.com/chens-code-rythm/lexiflow/releases/download/v0.3.0/LexiFlow_0.3.0_x64-setup.exe"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTWEpncDFLTkxuRWpVamF1R3JmUEpxaXRkK3pUdkg5QU8vdHpKci9hL0hDNkdhRU5pWGlRMldDY1Q4ZE1TRmJmN1UzVEYrTnVKR1ZrNUpBeGQ0OHR4TjZPY29mYmJwVVFJPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkzMDA4ODAzCWZpbGU6TGV4aUZsb3dfMC4zLjFfeDY0LXNldHVwLmV4ZQl2ZXJzaW9uOjAuMy4xCkkwNmtlc2tQYS9naGpzcmZEdFJqZkR5ck9OSlVqR2RyZmRBSjFvVUl4c2pQdEZ4WlZRK1UzeUN5QmtWK1g1d3dnU2E4amFmQldMQVlGU3BZaXNmU0NBPT0K",
+                                             "url":  "https://gitee.com/chens-code-rythm/lexiflow/releases/download/v0.3.1/LexiFlow_0.3.1_x64-setup.exe"
                                          }
                   }
 }

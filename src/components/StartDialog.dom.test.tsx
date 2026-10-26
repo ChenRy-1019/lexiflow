@@ -36,6 +36,16 @@ async function mount(goal: number, onStart?: (choice: { limit?: number }) => voi
       started: 4,
       mastered: 2,
     },
+    {
+      id: "small",
+      name: "小词书",
+      category: "国内考试",
+      short: "SMALL",
+      description: "",
+      total: 120,
+      started: 0,
+      mastered: 0,
+    },
   ];
 
   document.body.innerHTML = '<div id="host"></div>';
@@ -138,7 +148,7 @@ describe("StartDialog size options", () => {
     });
   });
 
-  it("accepts a custom count in the thousands", async () => {
+  it("takes the ceiling from the chosen wordbook", async () => {
     let chosen: { limit?: number } | null = null;
     const { host, root, act } = await mount(20, (choice) => {
       chosen = choice;
@@ -152,12 +162,13 @@ describe("StartDialog size options", () => {
     });
 
     const field = host.querySelector(".size-entry__input") as HTMLInputElement;
-    // The field used to cap at 200, which a long wordbook outgrows.
-    expect(Number(field.getAttribute("max"))).toBe(6000);
+    // The ceiling is the size of the book, not a fixed number: the fixture
+    // holds 4756 words.
+    expect(Number(field.getAttribute("max"))).toBe(4756);
 
     const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
     await act(async () => {
-      setter?.call(field, "6000");
+      setter?.call(field, "4756");
       field.dispatchEvent(new Event("input", { bubbles: true }));
     });
 
@@ -174,14 +185,14 @@ describe("StartDialog size options", () => {
       start?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    expect(chosen?.limit).toBe(6000);
+    expect(chosen?.limit).toBe(4756);
 
     await act(async () => {
       root.unmount();
     });
   });
 
-  it("refuses a count above the ceiling", async () => {
+  it("refuses a count above the book's ceiling", async () => {
     let chosen: { limit?: number } | null = null;
     const { host, root, act } = await mount(20, (choice) => {
       chosen = choice;
@@ -196,10 +207,10 @@ describe("StartDialog size options", () => {
 
     const field = host.querySelector(".size-entry__input") as HTMLInputElement;
     const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
-    // A value past the ceiling is kept in the field while editing but must not
-    // become the chosen size.
+    // A value past the book's size is kept in the field while editing but must
+    // not become the chosen size.
     await act(async () => {
-      setter?.call(field, "6001");
+      setter?.call(field, "4757");
       field.dispatchEvent(new Event("input", { bubbles: true }));
     });
     await act(async () => {
@@ -213,7 +224,47 @@ describe("StartDialog size options", () => {
       start?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    expect(chosen?.limit).not.toBe(6001);
+    expect(chosen?.limit).not.toBe(4757);
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it("lowers the count when a smaller book is picked", async () => {
+    const { host, root, act } = await mount(20);
+
+    // The fixture has one book of 4756 words; the ceiling follows it.
+    const entry = host.querySelector(".size-picker__item--entry");
+    entry?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    });
+
+    const field = host.querySelector(".size-entry__input") as HTMLInputElement;
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+    await act(async () => {
+      setter?.call(field, "4000");
+      field.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+    // Choosing another book with fewer words must bring the count down with
+    // it, otherwise the session asks for more words than exist.
+    await act(async () => {
+      const smaller = [...host.querySelectorAll(".book-picker__item")].find((button) =>
+        button.getAttribute("data-total") === "120",
+      ) as HTMLButtonElement | undefined;
+      smaller?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    });
+
+    const after = host.querySelector(".size-entry__input") as HTMLInputElement;
+    expect(Number(after.getAttribute("max"))).toBe(120);
+    expect(Number(after.value)).toBeLessThanOrEqual(120);
 
     await act(async () => {
       root.unmount();

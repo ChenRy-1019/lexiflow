@@ -2987,3 +2987,12 @@ select {
 .search--block .search__icon {
   color: var(--text-tertiary);
 }
+
+/* The ceiling shown next to the custom count, so the limit is not a surprise. */
+.size-picker__hint {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--text-tertiary);
+  margin-left: 4px;
+  white-space: nowrap;
+}

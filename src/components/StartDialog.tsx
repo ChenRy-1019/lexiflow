@@ -6,7 +6,14 @@ import type { StudyMode, StudyScope } from "../lib/types";
 
 /** The bounds a custom session size must fall within. */
 const MIN_SIZE = 1;
-const MAX_SIZE = 6000;
+
+/**
+ * A ceiling for the custom count when no book is picked yet.
+ *
+ * The real limit is the size of the chosen wordbook, so this only applies
+ * before the dialog has a book, which never happens in practice.
+ */
+const FALLBACK_MAX_SIZE = 100_000;
 
 /** The three practice modes. */
 const MODES: Array<{ id: StudyMode; label: string; hint: string }> = [
@@ -98,7 +105,11 @@ export default function StartDialog({
         setScope(savedScope);
       }
       const parsed = Number(savedLimit);
-      if (Number.isInteger(parsed) && parsed >= MIN_SIZE && parsed <= MAX_SIZE) {
+      // A count saved for a different book may exceed this one's size, so it
+      // is only restored when it still fits.
+      const book = books.find((item) => item.id === savedBook);
+      const ceiling = book ? book.total : FALLBACK_MAX_SIZE;
+      if (Number.isInteger(parsed) && parsed >= MIN_SIZE && parsed <= ceiling) {
         setLimit(parsed);
         setCustomValue(String(parsed));
       }
@@ -127,6 +138,19 @@ export default function StartDialog({
   }, [books]);
 
   const selected = books.find((book) => book.id === bookId) ?? null;
+
+  /**
+   * The largest count the current choices allow.
+   *
+   * A book cannot yield more words than it holds, so its size is the ceiling.
+   * A review is sized by FSRS rather than by the learner, so the ceiling lifts
+   * while that scope is selected.
+   */
+  const maxSize = useMemo(() => {
+    if (!selected) return FALLBACK_MAX_SIZE;
+    if (scope === "review") return Math.max(FALLBACK_MAX_SIZE, selected.total);
+    return Math.max(MIN_SIZE, selected.total);
+  }, [selected, scope]);
 
   /** How many words the chosen settings can actually produce. */
   const available = useMemo(() => {
@@ -172,7 +196,19 @@ export default function StartDialog({
                   key={book.id}
                   type="button"
                   className={`book-picker__item ${bookId === book.id ? "book-picker__item--active" : ""}`}
-                  onClick={() => setBookId(book.id)}
+                  data-total={book.total}
+                  onClick={() => {
+                    // Switching to a smaller book must not leave a count that
+                    // the new book cannot supply, and the field has to show
+                    // the lowered number too.
+                    setBookId(book.id);
+                    const ceiling = Math.max(MIN_SIZE, book.total);
+                    setLimit((current) => {
+                      if (current <= ceiling) return current;
+                      setCustomValue(String(ceiling));
+                      return ceiling;
+                    });
+                  }}
                 >
                   <span className="book-picker__name">{book.name}</span>
                   <span className="book-picker__meta">
@@ -258,21 +294,21 @@ export default function StartDialog({
                       className="size-entry__input"
                       type="number"
                       min={MIN_SIZE}
-                      max={MAX_SIZE}
+                      max={maxSize}
                       value={customValue}
                       autoFocus
                       onClick={(event) => event.stopPropagation()}
                       onChange={(event) => {
                         setCustomValue(event.target.value);
                         const parsed = Number(event.target.value);
-                        if (Number.isInteger(parsed) && parsed >= MIN_SIZE && parsed <= MAX_SIZE) {
+                        if (Number.isInteger(parsed) && parsed >= MIN_SIZE && parsed <= maxSize) {
                           setLimit(parsed);
                         }
                       }}
                       onBlur={() => {
                         // Keep the field and the chosen size in step.
                         const parsed = Number(customValue);
-                        if (!Number.isInteger(parsed) || parsed < MIN_SIZE || parsed > MAX_SIZE) {
+                        if (!Number.isInteger(parsed) || parsed < MIN_SIZE || parsed > maxSize) {
                           setCustomValue(String(limit));
                         } else {
                           setLimit(parsed);
@@ -281,6 +317,9 @@ export default function StartDialog({
                       aria-label="自定义数量"
                     />
                     <span className="size-picker__unit">词</span>
+                    {custom && selected && scope !== "review" && (
+                      <span className="size-picker__hint">最多 {maxSize.toLocaleString()}</span>
+                    )}
                   </>
                 ) : (
                   "自定义"
