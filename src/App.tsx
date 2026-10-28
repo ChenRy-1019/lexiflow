@@ -60,6 +60,10 @@ export default function App() {
     mode: StudyMode;
     scope: StudyScope;
     limit: number;
+    /** An explicit pool, used when the session comes from the notebook. */
+    entryIds?: string[];
+    /** Study every id in the pool, ignoring the review schedule. */
+    forceAll?: boolean;
   }>({ bookId: "", mode: "spelling", scope: "mix", limit: 20 });
   /** Whether the start dialog is open. */
   const [startDialogOpen, setStartDialogOpen] = useState(false);
@@ -214,6 +218,35 @@ export default function App() {
     setPage("practice");
   }, [stats.dueCount, startOptions.mode]);
 
+  /**
+   * Study the words in the notebook.
+   *
+   * The notebook is already the list, so asking the learner to pick a wordbook
+   * and a mode asked them to describe what they had just selected. The session
+   * draws from the notebook's ids directly, and every one of them is offered
+   * rather than only the ones FSRS says are due.
+   */
+  const startNotebook = useCallback(
+    (entryIds: string[]) => {
+      if (entryIds.length === 0) return;
+      setStartOptions({
+        bookId: "",
+        mode: startOptions.mode,
+        // `mix` is the closest named scope; the backend ignores it because the
+        // id list is explicit and every word in it is wanted.
+        scope: "mix",
+        limit: entryIds.length,
+        entryIds,
+        forceAll: true,
+      });
+      setResumeSession(false);
+      setStartDialogOpen(false);
+      setImmersive(true);
+      setPage("practice");
+    },
+    [startOptions.mode],
+  );
+
   const content = useMemo(() => {
     switch (page) {
       case "home":
@@ -252,6 +285,8 @@ export default function App() {
             initialMode={startOptions.mode}
             initialScope={startOptions.scope}
             initialLimit={startOptions.limit}
+        initialEntryIds={startOptions.entryIds}
+        forceAll={startOptions.forceAll}
             resume={resumeSession}
             onExit={exitImmersive}
             onChange={refresh}
@@ -259,7 +294,7 @@ export default function App() {
           />
         );
       case "notebook":
-        return <NotebookPage onStart={() => openStartDialog()} onRefresh={refresh} />;
+        return <NotebookPage onStart={startNotebook} onRefresh={refresh} />;
       case "stats":
         return <StatsPage stats={stats} books={books} />;
       case "settings":

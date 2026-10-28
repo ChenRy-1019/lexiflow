@@ -128,6 +128,13 @@ export async function buildSession(
   bookId: string,
   scope: StudyScope,
   limit: number,
+  /**
+   * An explicit pool of ids, used by the notebook.
+   *
+   * `forceAll` studies every id rather than only the ones FSRS says are due,
+   * because a saved word should be available on demand.
+   */
+  pool?: { entryIds?: string[]; forceAll?: boolean },
 ): Promise<StudyItem[]> {
   return call<StudyItem[]>(
     "build_session",
@@ -137,6 +144,8 @@ export async function buildSession(
         scope,
         limit,
         localOffsetMinutes: localOffsetMinutes(),
+        entryIds: pool?.entryIds ?? [],
+        forceAll: pool?.forceAll ?? false,
       },
     },
     [],

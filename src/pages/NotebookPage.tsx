@@ -9,7 +9,8 @@ import {
 import type { Entry } from "../lib/types";
 
 interface NotebookPageProps {
-  onStart: () => void;
+  /** Study the notebook's words directly, without a wordbook picker. */
+  onStart: (entryIds: string[]) => void;
   onRefresh: () => void;
 }
 
@@ -63,7 +64,11 @@ export default function NotebookPage({ onStart, onRefresh }: NotebookPageProps) 
         </div>
         <div style={{ flex: 1 }} />
         {items.length > 0 && (
-          <button type="button" className="button button--primary" onClick={onStart}>
+          <button
+            type="button"
+            className="button button--primary"
+            onClick={() => onStart(items.map((item) => item.entryId))}
+          >
             复习生词
           </button>
         )}

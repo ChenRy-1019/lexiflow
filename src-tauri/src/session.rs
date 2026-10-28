@@ -142,6 +142,22 @@ pub fn build_session(
         .collect()
 }
 
+/// Build a session from an explicit pool, ignoring the review schedule.
+///
+/// The notebook uses this: its words are saved because the learner wants to
+/// work on them, so they should be available whenever that is asked for rather
+/// than only once FSRS marks them due.
+pub fn build_all(entry_ids: &[String], cards: &HashMap<String, Card>, limit: usize) -> Vec<SessionItem> {
+    entry_ids
+        .iter()
+        .take(limit)
+        .map(|id| SessionItem {
+            entry_id: id.clone(),
+            is_review: cards.get(id).map(|card| card.due > 0).unwrap_or(false),
+        })
+        .collect()
+}
+
 /// The counters for a word after one review.
 ///
 /// `correct` is whether the learner got it right; showing the answer and

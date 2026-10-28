@@ -24,7 +24,7 @@ pub mod testing {
     pub use crate::db::{Card, DashboardStats, Db, NotebookItem, ReviewLog};
     pub use crate::lexicon::{Entry, Lexicon, Wordbook};
     pub use crate::session::{
-        build_session, longest_streak, record_review, due_count, mastered_count, started_count,
+        build_session, build_all, longest_streak, record_review, due_count, mastered_count, started_count,
         PendingSession, ReviewInput, ReviewOutcome, Scope, SessionItem,
     };
     pub use crate::db::{CustomBook, CustomEntry};
@@ -126,6 +126,18 @@ pub struct StudyRequest {
     /// The learner's UTC offset in minutes.
     #[serde(default)]
     pub local_offset_minutes: i64,
+    /// An explicit pool of entry ids, used when studying the notebook.
+    ///
+    /// When present these ids are the pool and `book_id` is ignored, so the
+    /// notebook does not have to be mapped onto a wordbook first.
+    #[serde(default)]
+    pub entry_ids: Vec<String>,
+    /// Practise every id in the pool, ignoring the review schedule.
+    ///
+    /// A word saved to the notebook should be available on demand rather than
+    /// only when FSRS says it is due.
+    #[serde(default)]
+    pub force_all: bool,
 }
 
 /// Request to record a completed review.
@@ -144,6 +156,18 @@ pub struct ReviewRequest {
     /// The learner's UTC offset in minutes.
     #[serde(default)]
     pub local_offset_minutes: i64,
+    /// An explicit pool of entry ids, used when studying the notebook.
+    ///
+    /// When present these ids are the pool and `book_id` is ignored, so the
+    /// notebook does not have to be mapped onto a wordbook first.
+    #[serde(default)]
+    pub entry_ids: Vec<String>,
+    /// Practise every id in the pool, ignoring the review schedule.
+    ///
+    /// A word saved to the notebook should be available on demand rather than
+    /// only when FSRS says it is due.
+    #[serde(default)]
+    pub force_all: bool,
 }
 
 /// Export of the learner's whole history.
@@ -628,7 +652,10 @@ fn build_session(
     let cards = db.all_cards()?;
     let now = util::now_ms();
 
-    let ids: Vec<String> = if request.book_id.is_empty() {
+    let ids: Vec<String> = if !request.entry_ids.is_empty() {
+        // The caller supplied the pool, so no wordbook lookup is needed.
+        request.entry_ids.clone()
+    } else if request.book_id.is_empty() {
         let mut all = Vec::new();
         for book in state.lexicon.books() {
             all.extend(state.lexicon.book_entries(&book.id).iter().cloned());
@@ -651,7 +678,13 @@ fn build_session(
     };
 
     let scope = session::Scope::parse(&request.scope);
-    let selected = session::build_session(&ids, &cards, scope, request.limit, now);
+    let selected = if request.force_all {
+        // Study the pool as it stands: the notebook asks for practice, not for
+        // whatever happens to be due.
+        session::build_all(&ids, &cards, request.limit)
+    } else {
+        session::build_session(&ids, &cards, scope, request.limit, now)
+    };
 
     Ok(selected
         .iter()

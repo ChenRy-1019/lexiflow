@@ -2996,3 +2996,35 @@ select {
   margin-left: 4px;
   white-space: nowrap;
 }
+
+/*
+ * Stepping back one word. It sits beside the exit arrow so the two directions
+ * of leaving are together, and greys out on the first word where there is
+ * nothing to return to.
+ */
+.practice__back-word {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 16px;
+  line-height: 1;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease),
+    background var(--duration-fast) var(--ease);
+}
+
+.practice__back-word:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: var(--gray-100);
+}
+
+.practice__back-word:disabled {
+  opacity: 0.35;
+  cursor: default;
+}

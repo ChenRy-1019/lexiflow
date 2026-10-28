@@ -118,6 +118,14 @@ interface PracticePageProps {
   initialScope?: StudyScope;
   /** How many words this session should contain. */
   initialLimit?: number;
+  /**
+   * An explicit pool of entry ids to study, used by the notebook.
+   *
+   * When present these ids are the pool and the wordbook is irrelevant.
+   */
+  initialEntryIds?: string[];
+  /** Study every id in the pool, ignoring the review schedule. */
+  forceAll?: boolean;
   /** Resume the saved session instead of building a new one. */
   resume?: boolean;
   onExit: () => void;
@@ -132,6 +140,8 @@ export default function PracticePage({
   initialMode = "spelling",
   initialScope = "mix",
   initialLimit = 20,
+  initialEntryIds,
+  forceAll = false,
   resume = false,
   onExit,
   onChange,
@@ -166,6 +176,20 @@ export default function PracticePage({
     /** The option the learner clicked, so a wrong pick can be marked. */
     picked?: string;
   } | null>(null);
+  /**
+   * States the learner can step back to.
+   *
+   * Each entry is the page as it looked before one move forward. Restoring a
+   * snapshot does not re-run the review, which is already persisted.
+   */
+  const [history, setHistory] = useState<
+    Array<{
+      index: number;
+      typed: string;
+      graded: typeof graded;
+      copySpelling: boolean;
+    }>
+  >([]);
   const [copySpelling, setCopySpelling] = useState(false);
   const [notebookIds, setNotebookIds] = useState<Set<string>>(new Set());
   const [startedAt, setStartedAt] = useState<number>(Date.now());
@@ -233,9 +257,14 @@ export default function PracticePage({
    * and, when resuming, restore the saved mode over the learner's choice.
    */
   const load = useCallback(
-    async (nextBook: string, nextScope: StudyScope, size: number) => {
+    async (
+      nextBook: string,
+      nextScope: StudyScope,
+      size: number,
+      pool?: { entryIds?: string[]; forceAll?: boolean },
+    ) => {
       setLoading(true);
-      const items = await buildSession(nextBook, nextScope, size);
+      const items = await buildSession(nextBook, nextScope, size, pool);
       const cards = await fetchCards();
 
       const mapped: QueueItem[] = items.map((item) => {
@@ -259,6 +288,7 @@ export default function PracticePage({
 
       setQueue(mapped);
       setIndex(0);
+      setHistory([]);
       setTyped("");
       setGraded(null);
       setStartedAt(Date.now());
@@ -450,7 +480,7 @@ export default function PracticePage({
       // Leaving a stale session on disk would make the home page offer to
       // continue a round the learner has moved on from.
       void clearSession();
-      void load(bookId, scope, sessionSize);
+      void load(bookId, scope, sessionSize, { entryIds: initialEntryIds, forceAll });
       return;
     }
 
@@ -578,6 +608,43 @@ export default function PracticePage({
     [current, graded],
   );
 
+  /** Remember where the learner is, before stepping away from it. */
+  const pushHistory = useCallback(() => {
+    setHistory((past) => [
+      // A cap keeps a long session from growing without bound.
+      ...past.slice(-49),
+      { index, typed, graded, copySpelling },
+    ]);
+  }, [index, typed, graded, copySpelling]);
+
+  /**
+   * Step back to the previous word.
+   *
+   * The review already recorded for the word being left behind stays in the
+   * database: stepping back is for a second look, not for undoing a rating.
+   */
+  const goBack = useCallback(() => {
+    if (history.length === 0) return;
+
+    const past = history[history.length - 1];
+    setHistory((list) => list.slice(0, -1));
+    setIndex(past.index);
+    setTyped(past.typed);
+    setGraded(past.graded);
+    setCopySpelling(past.copySpelling);
+    setStartedAt(Date.now());
+
+    void saveSession({
+      ids: queue.map((item) => item.entryId),
+      answered: past.index,
+      bookId,
+      scope,
+      mode,
+      limit: sessionSize,
+      updatedAt: Date.now(),
+    });
+  }, [history, queue, bookId, scope, mode, sessionSize]);
+
   /**
    * Record the review and move on.
    *
@@ -630,6 +697,7 @@ export default function PracticePage({
       });
 
       onChange();
+      pushHistory();
       setIndex((value) => value + 1);
       setTyped("");
       setGraded(null);
@@ -647,11 +715,24 @@ export default function PracticePage({
         updatedAt: Date.now(),
       });
     },
-    [current, graded, mode, startedAt, onChange, queue, index, bookId, scope, sessionSize],
+    [
+      current,
+      graded,
+      mode,
+      startedAt,
+      onChange,
+      queue,
+      index,
+      bookId,
+      scope,
+      sessionSize,
+      pushHistory,
+    ],
   );
 
   /** Move to the next word without grading the current one. */
   const skip = useCallback(() => {
+    pushHistory();
     setIndex((value) => value + 1);
     setTyped("");
     setGraded(null);
@@ -666,7 +747,7 @@ export default function PracticePage({
       limit: sessionSize,
       updatedAt: Date.now(),
     });
-  }, [queue, index, bookId, scope, mode, sessionSize]);
+  }, [queue, index, bookId, scope, mode, sessionSize, pushHistory]);
 
   /** Toggle the current word in the notebook. */
   const toggleNotebook = useCallback(
@@ -701,6 +782,12 @@ export default function PracticePage({
    */
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      // Stepping back is Ctrl+Z, the shortcut people already reach for.
+      if (event.key === "z" && event.ctrlKey) {
+        event.preventDefault();
+        goBack();
+        return;
+      }
       if (event.key === "Escape") {
         // Closing the reference comes first: Escape should dismiss it rather
         // than throw the learner out of practice.
@@ -773,7 +860,7 @@ export default function PracticePage({
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [graded, commit, skip, mode, choices, pickChoice, onExit, pronounceCurrent, copySpelling, finishCopy, shortcutsOpen]);
+  }, [graded, commit, skip, goBack, mode, choices, pickChoice, onExit, pronounceCurrent, copySpelling, finishCopy, shortcutsOpen]);
 
   /**
    * The answer field handles Enter itself.
@@ -875,6 +962,17 @@ export default function PracticePage({
         </button>
 
         <span className="practice__divider" aria-hidden="true" />
+
+        <button
+          type="button"
+          className="practice__back-word"
+          onClick={goBack}
+          disabled={history.length === 0}
+          title="上一个词（Ctrl+Z）"
+          aria-label="上一个词"
+        >
+          ←
+        </button>
 
         {/* What the session is: which book, which mode, how many, and how far
             through. One cluster so the group reads as a unit. */}
@@ -1049,6 +1147,7 @@ export default function PracticePage({
                 ["F1 / F2 / F3", "切换 拼写 / 选择 / 听写"],
                 ["Ctrl + R", "重听发音"],
                 ["Ctrl + Enter", "跳过这个单词"],
+            ["Ctrl + Z", "回到上一个单词，可以再看一遍"],
                 ["Esc", "返回首页"],
                 ["?", "显示这张表"],
               ].map(([key, action]) => (

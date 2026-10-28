@@ -1,11 +1,11 @@
 {
-    "version":  "0.3.1",
-    "notes":  "## LexiFlow 0.3.1\n\n自定义学习数量的上限改成跟着所选词书走。\n\n### 之前\n\n上限是写死的数字。0.3.0 提到 6000，但六百这个数本身没有依据——\n换一本词书，它还是 6000。\n\n### 现在\n\n**上限 = 你选的那本词书的词数。**\n\n| 词书 | 上限 |\n|---|---|\n| 刘晓燕英语四级核心词汇 | 2,327 |\n| 大学英语四级词汇 | 4,756 |\n| 大学英语六级词汇 | 6,455 |\n| 托福核心词汇 | 6,974 |\n\n输入框旁边会直接标出「最多 2,327」这样的提示，不用猜。\n\n**换词书时会自动调整。**\n\n选了 6,974 词的托福，填了 6,000；再换成 2,327 词的词书，\n数字会自动降到 2,327，不会留下一堆学不完的词。\n\n**「只复习」不设上限。**\n\n复习的数量由 FSRS 按到期情况决定，不由你填，所以这时候上限会放开。\n\n### 怎么升级\n\n软件会提示更新，点「下载并安装」即可。\n学习记录、生词本、导入的词书都会保留。",
-    "pub_date":  "2026-10-26T10:00:14Z",
+    "version":  "0.3.2",
+    "notes":  "## LexiFlow 0.3.2\n\n两个改进：练习时能退回上一个词，生词本可以直接开练。\n\n### 新增：返回上一个词\n\n练习页工具栏左边加了一个 **←** 按钮，或者按 **Ctrl + Z**。\n\n- 在第一题时按钮是灰的，没有可返回的\n- 退回后能看到原来的释义、你输入的内容、判定结果\n- 最多可以连续退 50 步\n\n**注意：退回不会撤销已经记录的复习。**\n\n评分一旦提交就写进数据库了，退回是让你「再看一眼」，不是撤销刚才的评分。\n所以你退回去重新评分，会被当成一次新的复习。\n\n### 改进：生词本直接开练\n\n以前点「复习生词」，会弹出选词书、选模式、选数量的对话框——\n可你已经在生词本里挑好了词，还得再描述一遍。\n\n现在点「复习生词」**直接进入练习**：\n\n- 词就是生词本里的那些，不用再选词书\n- 模式沿用你上次选的\n- 数量自动等于生词本里的词数\n- **不受 FSRS 到期限制**：生词本里的词都可以练，不用等它到期\n\n### 怎么升级\n\n软件会提示更新，点「下载并安装」即可。\n学习记录、生词本、导入的词书都会保留。",
+    "pub_date":  "2026-10-28T14:04:16Z",
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTWEpncDFLTkxuRWpVamF1R3JmUEpxaXRkK3pUdkg5QU8vdHpKci9hL0hDNkdhRU5pWGlRMldDY1Q4ZE1TRmJmN1UzVEYrTnVKR1ZrNUpBeGQ0OHR4TjZPY29mYmJwVVFJPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkzMDA4ODAzCWZpbGU6TGV4aUZsb3dfMC4zLjFfeDY0LXNldHVwLmV4ZQl2ZXJzaW9uOjAuMy4xCkkwNmtlc2tQYS9naGpzcmZEdFJqZkR5ck9OSlVqR2RyZmRBSjFvVUl4c2pQdEZ4WlZRK1UzeUN5QmtWK1g1d3dnU2E4amFmQldMQVlGU3BZaXNmU0NBPT0K",
-                                             "url":  "https://gitee.com/chens-code-rythm/lexiflow/releases/download/v0.3.1/LexiFlow_0.3.1_x64-setup.exe"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTWEpncDFLTkxuRWxyd1RnMTdKdzZOSVRWQXBHeWZUN0d3UmdYakY2SER3V1BIK0hUQWFKUW9mN2hieER5a3B2ejJUNEUrc1BTaE1pV0RSVTh5djJwNm1lSXltZlM5WGdRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkzMTk2MjM4CWZpbGU6TGV4aUZsb3dfMC4zLjJfeDY0LXNldHVwLmV4ZQl2ZXJzaW9uOjAuMy4yCisyRng4V3ZNZVFOMDE0VVJYZEcycmYrazZzRmk5Y3I2Y0hDY1VOaTk3WTM4LzN6Ym9oZVViallJUFB5dEN0L2NuTkNUWHBQV1gvVUlDUDd1aFJFdUNBPT0K",
+                                             "url":  "https://gitee.com/chens-code-rythm/lexiflow/releases/download/v0.3.2/LexiFlow_0.3.2_x64-setup.exe"
                                          }
                   }
 }
