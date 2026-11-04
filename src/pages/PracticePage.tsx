@@ -1316,7 +1316,7 @@ export default function PracticePage({
             disabled={history.length === 0}
             title="上一个词（Ctrl+Z）"
           >
-            ← 上一个词
+            上一个词
           </button>
           <button type="button" className="button" onClick={reveal}>
             显示答案
