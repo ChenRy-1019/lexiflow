@@ -963,17 +963,6 @@ export default function PracticePage({
 
         <span className="practice__divider" aria-hidden="true" />
 
-        <button
-          type="button"
-          className="practice__back-word"
-          onClick={goBack}
-          disabled={history.length === 0}
-          title="上一个词（Ctrl+Z）"
-          aria-label="上一个词"
-        >
-          ←
-        </button>
-
         {/* What the session is: which book, which mode, how many, and how far
             through. One cluster so the group reads as a unit. */}
         <div className="practice__group practice__group--session">
@@ -1317,6 +1306,18 @@ export default function PracticePage({
 
       {!graded ? (
         <div className="practice__actions">
+          {/* Stepping back belongs with the answering controls, not with
+              leaving the page: it is an action on the word, not on the
+              session. */}
+          <button
+            type="button"
+            className="button"
+            onClick={goBack}
+            disabled={history.length === 0}
+            title="上一个词（Ctrl+Z）"
+          >
+            ← 上一个词
+          </button>
           <button type="button" className="button" onClick={reveal}>
             显示答案
           </button>

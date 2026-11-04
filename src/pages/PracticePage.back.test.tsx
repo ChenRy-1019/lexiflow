@@ -76,11 +76,18 @@ function shownWord(host: HTMLElement): string {
   return host.querySelector(".practice__prompt")?.textContent ?? "";
 }
 
+/** The step-back control, which sits beside the answering buttons. */
+function findBack(host: HTMLElement): HTMLButtonElement | undefined {
+  return [...host.querySelectorAll("button")].find((button) =>
+    button.textContent?.includes("上一个词"),
+  ) as HTMLButtonElement | undefined;
+}
+
 describe("stepping back", () => {
   it("disables the back control on the first word", async () => {
     const { host, root, act } = await mountPractice();
 
-    const back = host.querySelector(".practice__back-word") as HTMLButtonElement;
+    const back = findBack(host);
     expect(back).not.toBeNull();
     expect(back.disabled).toBe(true);
 
@@ -108,7 +115,7 @@ describe("stepping back", () => {
     expect(shownWord(host)).not.toBe(first);
 
     // The control becomes usable once there is somewhere to return to.
-    const back = host.querySelector(".practice__back-word") as HTMLButtonElement;
+    const back = findBack(host);
     expect(back.disabled).toBe(false);
 
     await act(async () => {
@@ -188,7 +195,7 @@ describe("stepping back", () => {
 
     // Step back; no second review should be written.
     await act(async () => {
-      const back = host.querySelector(".practice__back-word") as HTMLButtonElement;
+      const back = findBack(host);
       back?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     await act(async () => {
