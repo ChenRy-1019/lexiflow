@@ -1,0 +1,115 @@
+name: Mirror a release from Gitee
+
+# 为什么存在
+#
+# 作者的机器到 github.com 的网页和 git 协议是通的，但 api.github.com 和
+# uploads.github.com 无法连接：本地的加速器只代理了 git。于是代码和 tag 推得上去，
+# 带安装包的 Release 却永远建不成。
+#
+# 这个工作流把「上传」这一步挪到 GitHub 自己的机器上执行。它不依赖作者的任何凭证，
+# 用的是仓库自带的 GITHUB_TOKEN。
+#
+# 前置条件：安装包必须先发到 Gitee。工作流会去 Gitee 取包，取不到就直接失败——
+# 这样不会出现「GitHub 有 Release、附件却是旧的或缺失」的情况。
+
+on:
+  push:
+    tags:
+      - "v*"
+  # 手动重跑，用于 tag 已经推上去之后补发（本例中 v0.3.3 就是这种情况）。
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "要发布的 tag，例如 v0.3.3"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  GITEE_OWNER: chens-code-rythm
+  GITEE_REPO: lexiflow
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # 手动触发时要检出被指定的 tag，而不是默认分支。
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: 解析版本号
+        id: vars
+        run: |
+          TAG="${{ inputs.tag || github.ref_name }}"
+          VERSION="${TAG#v}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "发布 $TAG（版本 $VERSION）"
+
+      - name: 从 Gitee 下载安装包
+        env:
+          TAG: ${{ steps.vars.outputs.tag }}
+          VERSION: ${{ steps.vars.outputs.version }}
+        run: |
+          BASE="https://gitee.com/${GITEE_OWNER}/${GITEE_REPO}/releases/download/${TAG}"
+          NAME="LexiFlow_${VERSION}_x64-setup.exe"
+
+          mkdir -p dist
+          for FILE in "${NAME}" "${NAME}.sig"; do
+            echo "下载 ${BASE}/${FILE}"
+            curl --fail --location --silent --show-error --retry 3 \
+              --output "dist/${FILE}" "${BASE}/${FILE}"
+          done
+
+          # 一个空文件或半截文件不该被当作安装包发布出去。
+          SIZE=$(stat -c %s "dist/${NAME}")
+          echo "安装包大小: ${SIZE} 字节"
+          if [ "$SIZE" -lt 1000000 ]; then
+            echo "::error::安装包只有 ${SIZE} 字节，Gitee 上可能还没有这个版本"
+            exit 1
+          fi
+
+      - name: 校验清单与本次版本一致
+        env:
+          VERSION: ${{ steps.vars.outputs.version }}
+        run: |
+          # 清单里的下载地址指向 Gitee，版本号必须与 tag 对应；
+          # 不一致说明清单是旧的，发出去会让用户的更新器读到错误版本。
+          MANIFEST="updates/latest.json"
+          [ -f "$MANIFEST" ] || { echo "::error::缺少 ${MANIFEST}"; exit 1; }
+
+          MANIFEST_VERSION=$(python3 -c "import json;print(json.load(open('$MANIFEST'))['version'])")
+          echo "清单版本: ${MANIFEST_VERSION}，tag 版本: ${VERSION}"
+          if [ "$MANIFEST_VERSION" != "$VERSION" ]; then
+            echo "::error::清单版本 ${MANIFEST_VERSION} 与 tag ${VERSION} 不一致"
+            exit 1
+          fi
+
+      - name: 创建 Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.vars.outputs.tag }}
+          VERSION: ${{ steps.vars.outputs.version }}
+        run: |
+          # 已经存在就复用，只补附件，避免重复建 Release。
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "Release ${TAG} 已存在，改为补附件"
+            gh release upload "$TAG" dist/* updates/latest.json --clobber
+          else
+            TITLE=$(head -1 release-notes.md | sed 's/^##[[:space:]]*//')
+            gh release create "$TAG" \
+              dist/* updates/latest.json \
+              --title "${TITLE:-LexiFlow ${VERSION}}" \
+              --notes-file release-notes.md
+          fi
+
+      - name: 汇报结果
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.vars.outputs.tag }}
+        run: |
+          gh release view "$TAG" --json url --jq '"发布完成: " + .url'
